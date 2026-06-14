@@ -1,234 +1,409 @@
 import React, { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Menu, X, Home, Info, Building2, Mail, Bell, Plus, FileText, Share2, Copy, CheckCircle2, Clock, Users, ShieldCheck, Download, Search, ChevronRight, ArrowLeft, Phone, MapPin, Globe2 } from 'lucide-react';
+import { Menu, Home, Users, CalendarDays, FileText, Plus, Search, CheckCircle2, XCircle, Clock3, ShieldCheck, Mail, Phone, Building2, UserRound, BadgeCheck, Bell, Download, Share2, ChevronRight, LogIn, UserPlus, BriefcaseBusiness, Sparkles, UploadCloud, Image as ImageIcon, Paperclip, Trash2 } from 'lucide-react';
 import './styles.css';
 
-const owners = [
-  {
-    id: 'mira-handloom',
-    name: 'Mira Ningombam',
-    role: 'Founder',
-    business: 'Mira Handloom Studio',
-    logo: 'MH',
-    photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=640&q=80',
-    category: 'Handloom & Design',
-    contact: '+91 98765 43210',
-    email: 'hello@mirahandloom.in',
-    address: 'Paona Bazaar, Imphal',
-    website: 'www.mirahandloom.in',
-    about: 'A contemporary textile studio preserving traditional weaving while creating modern home and fashion pieces for everyday use.',
-    services: ['Custom handloom orders', 'Traditional textiles', 'Home decor pieces', 'Design consultation'],
-    cardMessage: 'Crafted with heritage, made for modern homes.'
-  },
-  {
-    id: 'north-east-cafe',
-    name: 'Ronit Sapam',
-    role: 'Owner',
-    business: 'North East Cafe Co.',
-    logo: 'NE',
-    photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=640&q=80',
-    category: 'Cafe & Food',
-    contact: '+91 91234 56789',
-    email: 'visit@necafe.co',
-    address: 'Thangmeiband, Imphal',
-    website: 'www.necafe.co',
-    about: 'A calm neighborhood cafe serving locally inspired drinks, farm-style plates, and small creative events for the community.',
-    services: ['Specialty coffee', 'Private bookings', 'Event catering', 'Community pop-ups'],
-    cardMessage: 'Coffee, culture, and conversations.'
-  },
-  {
-    id: 'avit-solutions',
-    name: 'Sony Sapam',
-    role: 'Systems Designer',
-    business: 'AviT Solutions',
-    logo: 'Ai',
-    photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=640&q=80',
-    category: 'AV & IT Solutions',
-    contact: '+91 99887 77665',
-    email: 'connect@avitsolutions.tech',
-    address: 'Imphal, Manipur',
-    website: 'www.avitsolutions.tech',
-    about: 'Integrated audiovisual, IT, UI/UX, and custom software solutions for modern businesses, classrooms, cafes, and enterprise spaces.',
-    services: ['AV system design', 'Web & app development', 'ERP custom builds', 'UI/UX prototyping'],
-    cardMessage: 'Structural integrity in the body, the network, and the code.'
-  }
+const sectors = [
+  { id: 'all', icon: '✨', label: 'All', count: 28 },
+  { id: 'healthcare', icon: '🏥', label: 'Healthcare', count: 5 },
+  { id: 'automotive', icon: '🚗', label: 'Automotive', count: 6 },
+  { id: 'hospitality', icon: '🏨', label: 'Hospitality', count: 4 },
+  { id: 'construction', icon: '🏗️', label: 'Construction', count: 5 },
+  { id: 'technology', icon: '💻', label: 'Technology', count: 3 },
+  { id: 'education', icon: '🎓', label: 'Education', count: 3 },
+  { id: 'media', icon: '📰', label: 'Media', count: 2 },
 ];
 
-const initialSubmissions = [
-  { id: 1, title: 'Local Business Networking Evening', type: 'Event', by: 'Mira Handloom Studio', status: 'Pending', approvals: ['Admin A', 'Admin B'], needed: 4 },
-  { id: 2, title: 'Cafe Culture Article: New Farm Cafes', type: 'Article', by: 'North East Cafe Co.', status: 'Pending', approvals: ['Admin A'], needed: 4 },
-  { id: 3, title: 'Digital Visiting Card Feature Guide', type: 'Guide', by: 'AviT Solutions', status: 'Approved', approvals: ['Admin A', 'Admin B', 'Admin C', 'Admin D'], needed: 4 }
+const members = [
+  { id: 'aadarsh', name: 'Aadarsh Sharma', title: 'Managing Partner', company: 'Aadarsh Lab & Medicare Services', sector: 'healthcare', phone: '7005242123', email: 'aadarshsharma1237@gmail.com', initials: 'AM', verified: true, verifiedBy: 'Admin L. Ibomcha', services: ['Diagnostic Centre', 'Medicare Services', 'Health Support'], about: 'Healthcare and diagnostic services focused on reliable access and professional care.' },
+  { id: 'island', name: 'Rakesh Laishram', title: 'Director', company: 'Island Nissan', sector: 'automotive', phone: '9862011111', email: 'info@islandnissan.in', initials: 'IN', verified: true, verifiedBy: 'Admin N. Kumar', services: ['Automobile Sales', 'Vehicle Service', 'Customer Support'], about: 'Automotive dealership and service support for modern mobility needs.' },
+  { id: 'sangaihotel', name: 'K. Ranjit', title: 'Proprietor', company: 'Sangai Hotel', sector: 'hospitality', phone: '9436032100', email: 'booking@sangaihotel.com', initials: 'SH', verified: true, verifiedBy: 'Admin A. Singh', services: ['Hotel Rooms', 'Events', 'Hospitality'], about: 'Hospitality services for guests, travellers, and business visitors.' },
+  { id: 'impacttv', name: 'Y. Romen', title: 'Founder', company: 'Impact TV', sector: 'media', phone: '7000000000', email: 'contact@impacttv.in', initials: 'IT', verified: true, verifiedBy: 'Admin L. Ibomcha', services: ['Media Coverage', 'Broadcast', 'Production'], about: 'Media and broadcast platform covering public information and regional stories.' },
+  { id: 'sangaitech', name: 'Ningthoujam Dev', title: 'Founder', company: 'Sangai Technologies', sector: 'technology', phone: '8787000000', email: 'hello@sangaitech.in', initials: 'ST', verified: true, verifiedBy: 'Admin K. Devi', services: ['IT Services', 'Software', 'Digital Support'], about: 'Technology support and digital services for local businesses.' },
+  { id: 'comet', name: 'T. Robindro', title: 'Chairman', company: 'COMET School', sector: 'education', phone: '7085000000', email: 'office@cometschool.in', initials: 'CS', verified: true, verifiedBy: 'Admin N. Kumar', services: ['Education', 'Academic Programs', 'Student Development'], about: 'Educational institution focused on student growth and academic excellence.' },
+  { id: 'hvs', name: 'H. Vikram', title: 'Managing Director', company: 'HVS Construction', sector: 'construction', phone: '9366000000', email: 'projects@hvs.co.in', initials: 'HC', verified: true, verifiedBy: 'Admin A. Singh', services: ['Construction', 'Project Delivery', 'Civil Works'], about: 'Construction and project delivery services for commercial and private works.' },
 ];
 
-const initialEvents = [
-  {
-    id: 1,
-    title: 'Community Business Meetup',
-    date: 'Saturday, 20 June 2026',
-    time: '4:00 PM - 6:00 PM',
-    location: 'Town Hall, Imphal',
-    createdBy: 'Directory Admin',
-    description: 'A simple networking meetup for business owners, creators, and service providers.',
-    rsvp: {
-      attending: ['Mira', 'Ronit', 'Sony', 'Asha'],
-      maybe: ['Daniel', 'Ibotombi'],
-      notAttending: ['Rita']
-    }
-  },
-  {
-    id: 2,
-    title: 'e-PDF Article Sharing Workshop',
-    date: 'Sunday, 28 June 2026',
-    time: '11:00 AM - 12:30 PM',
-    location: 'Online + Community Hub',
-    createdBy: 'Content Team',
-    description: 'Learn how to create, download, and share readable community articles as PDFs.',
-    rsvp: {
-      attending: ['Sony', 'Rita'],
-      maybe: ['Mira', 'Asha', 'Daniel'],
-      notAttending: []
-    }
-  }
+const pendingMembersInitial = [
+  { id: 'pm-1', name: 'Th. Sanatomba', email: 'sanatomba@example.com', phone: 'Optional not provided', company: 'Sanatomba Trading', sector: 'retail', submitted: 'Today, 10:20 AM', match: 'Possible directory match: Sanatomba Trading', status: 'Pending' },
+  { id: 'pm-2', name: 'R.K. Binodini', email: 'binodini@example.com', phone: '9862123000', company: 'Leibaklei Hospitality', sector: 'hospitality', submitted: 'Today, 9:05 AM', match: 'Matched: Leibaklei Hotel', status: 'Pending' },
+  { id: 'pm-3', name: 'N. Premkumar', email: 'prem@example.com', phone: 'Optional not provided', company: 'Eastern Motors', sector: 'automotive', submitted: 'Yesterday, 5:44 PM', match: 'Matched: Eastern Motors', status: 'Pending' },
 ];
+
+const eventsInitial = [
+  { id: 'ev-1', day: 7, title: 'BEG Business Meet', time: '10:30 AM', location: 'Imphal Hotel', createdBy: 'Aadarsh Sharma', approvedBy: 'Admin L. Ibomcha', attending: ['Aadarsh Sharma', 'Rakesh Laishram'], maybe: ['K. Ranjit'], not: ['Y. Romen'] },
+  { id: 'ev-2', day: 15, title: 'SYNERGY Planning', time: '3:00 PM', location: 'BEG Office', createdBy: 'Sangai Technologies', approvedBy: 'Admin K. Devi', attending: ['Ningthoujam Dev'], maybe: ['T. Robindro'], not: [] },
+  { id: 'ev-3', day: 22, title: 'Member Networking Evening', time: '5:30 PM', location: 'City Convention Hall', createdBy: 'Island Nissan', approvedBy: 'Admin N. Kumar', attending: ['Rakesh Laishram', 'H. Vikram'], maybe: [], not: ['Aadarsh Sharma'] },
+];
+
+const contentInitial = [
+  { id: 'ct-1', type: 'Announcement', title: 'SYNERGY Business Summit Planning Open', summary: 'Members are invited to submit ideas, sponsorship interest and delegate recommendations for the upcoming SYNERGY business summit.', body: 'The organizing committee is collecting member suggestions for speakers, partner businesses and cross-border trade discussion topics.', submittedBy: 'Aadarsh Sharma', company: 'Aadarsh Lab & Medicare Services', submittedAt: 'Today, 11:10 AM', status: 'Approved', approvedBy: 'Admin L. Ibomcha', approvedAt: 'Today, 11:35 AM', visibility: 'Public' },
+  { id: 'ct-2', type: 'Business Offer', title: 'Member Offer: Fleet Service Support', summary: 'Island Nissan is offering priority service booking for verified BEG members during June.', body: 'Verified members can contact the Island Nissan team to access priority service slots and consultation for fleet maintenance needs.', submittedBy: 'Rakesh Laishram', company: 'Island Nissan', submittedAt: 'Today, 9:00 AM', status: 'Pending', approvedBy: '', approvedAt: '', visibility: 'Private until approved' },
+  { id: 'ct-3', type: 'Event Notice', title: 'Healthcare Sector Networking Roundtable', summary: 'A focused networking session for healthcare, diagnostic and wellness-sector members.', body: 'The roundtable will allow healthcare members to exchange services, partnership ideas and community health initiative proposals.', submittedBy: 'Aadarsh Sharma', company: 'Aadarsh Lab & Medicare Services', submittedAt: 'Yesterday, 4:20 PM', status: 'Pending', approvedBy: '', approvedAt: '', visibility: 'Private until approved' },
+];
+
+
+const admins = ['Admin L. Ibomcha', 'Admin N. Kumar', 'Admin K. Devi', 'Admin A. Singh'];
+const tabs = ['Home', 'About', 'Directory', 'Reminder', 'Submit', 'Management', 'e-PDF'];
 
 function App() {
-  const [page, setPage] = useState('home');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [selectedOwner, setSelectedOwner] = useState(owners[0]);
-  const [submissions, setSubmissions] = useState(initialSubmissions);
-  const [events, setEvents] = useState(initialEvents);
+  const [page, setPage] = useState('Home');
+  const [drawer, setDrawer] = useState(false);
+  const [sector, setSector] = useState('all');
+  const [query, setQuery] = useState('');
+  const [selectedMember, setSelectedMember] = useState(members[0]);
+  const [pendingMembers, setPendingMembers] = useState(pendingMembersInitial);
+  const [events, setEvents] = useState(eventsInitial);
+  const [selectedEvent, setSelectedEvent] = useState(eventsInitial[0]);
+  const [contents, setContents] = useState(contentInitial);
+  const [currentUser, setCurrentUser] = useState(null);
   const [toast, setToast] = useState('');
 
-  const publicApproved = submissions.filter(s => s.status === 'Approved');
-  const pending = submissions.filter(s => s.status === 'Pending');
+  const filteredMembers = useMemo(() => members.filter(m => (sector === 'all' || m.sector === sector) && `${m.name} ${m.company} ${m.services.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [sector, query]);
 
-  const navTo = (target) => { setPage(target); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const openOwner = (owner) => { setSelectedOwner(owner); navTo('profile'); };
-  const showToast = (message) => { setToast(message); setTimeout(() => setToast(''), 2200); };
+  const navigate = (target) => { setPage(target); setDrawer(false); window.scrollTo({top:0, behavior:'smooth'}); };
+  const notify = (msg) => { setToast(msg); try { new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch {} setTimeout(()=>setToast(''), 2500); };
 
-  const approveSubmission = (id) => {
-    setSubmissions(items => items.map(item => {
-      if (item.id !== id || item.status !== 'Pending') return item;
-      const nextApprovals = item.approvals.length >= item.needed ? item.approvals : [...item.approvals, `Admin ${String.fromCharCode(65 + item.approvals.length)}`];
-      return { ...item, approvals: nextApprovals, status: nextApprovals.length >= item.needed ? 'Approved' : 'Pending' };
-    }));
+  const approveMember = (id, admin, linkedProfileId) => {
+    const linked = members.find(m => m.id === linkedProfileId);
+    setPendingMembers(items => items.map(item => item.id === id ? {
+      ...item,
+      status: 'Approved',
+      linkedProfileId: linked?.id || item.linkedProfileId,
+      linkedProfileName: linked ? `${linked.name} • ${linked.company}` : item.linkedProfileName || 'No profile linked',
+      verifiedBy: admin,
+      verifiedOn: new Date().toLocaleString()
+    } : item));
+    notify(`Member approved by ${admin}${linked ? ` and linked to ${linked.company}` : ''}`);
+  };
+  const rejectMember = (id, admin) => {
+    setPendingMembers(items => items.map(item => item.id === id ? {...item, status: 'Rejected', verifiedBy: admin, verifiedOn: new Date().toLocaleString()} : item));
+    notify(`Member rejected by ${admin}`);
   };
 
-  const rejectSubmission = (id) => setSubmissions(items => items.map(item => item.id === id ? { ...item, status: 'Rejected' } : item));
-
-  const addSubmission = (e) => {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const title = form.get('title')?.toString().trim();
-    const type = form.get('type')?.toString();
-    if (!title) return;
-    setSubmissions(items => [{ id: Date.now(), title, type, by: form.get('by') || 'Community Member', status: 'Pending', approvals: [], needed: 4 }, ...items]);
-    e.currentTarget.reset();
-    showToast('Submitted for four-admin approval. Not live yet.');
-    navTo('admin');
+  const submitMemberSignup = (form) => {
+    const text = `${form.name} ${form.email} ${form.company}`.toLowerCase();
+    const candidates = members
+      .map(m => {
+        let score = 0;
+        if (form.email && m.email.toLowerCase() === form.email.toLowerCase()) score += 90;
+        if (form.name && m.name.toLowerCase().includes(form.name.toLowerCase())) score += 45;
+        if (form.company && m.company.toLowerCase().includes(form.company.toLowerCase())) score += 45;
+        if (`${m.name} ${m.company} ${m.email}`.toLowerCase().split(' ').some(part => part.length > 4 && text.includes(part))) score += 10;
+        return {...m, score};
+      })
+      .filter(m => m.score > 0)
+      .sort((a,b)=>b.score-a.score)
+      .slice(0,3);
+    const best = candidates[0];
+    const request = {
+      id: `pm-${Date.now()}`,
+      name: form.name,
+      email: form.email,
+      phone: form.phone || 'Optional not provided',
+      company: form.company || 'Not provided',
+      sector: best?.sector || 'pending',
+      submitted: new Date().toLocaleString(),
+      match: best ? `Suggested match: ${best.name} • ${best.company}` : 'No automatic match — admin must link manually',
+      candidateIds: candidates.map(c=>c.id),
+      linkedProfileId: best?.id || '',
+      linkedProfileName: best ? `${best.name} • ${best.company}` : '',
+      status: 'Pending'
+    };
+    setPendingMembers(items => [request, ...items]);
+    setCurrentUser({name: form.name, email: form.email, pending: true});
+    notify('Signup submitted. Admin must verify and link the directory profile.');
+    navigate('Management');
+  };
+  const submitContent = (form) => {
+    const member = currentUser?.linkedProfile || members[0];
+    const item = {
+      id: `ct-${Date.now()}`,
+      type: form.type,
+      title: form.title,
+      summary: form.summary,
+      body: form.body,
+      asset: form.asset || null,
+      submittedBy: currentUser?.name || member.name,
+      company: member.company || form.company || 'Verified AMBI Member',
+      submittedAt: new Date().toLocaleString(),
+      status: 'Pending',
+      approvedBy: '',
+      approvedAt: '',
+      visibility: 'Private until approved'
+    };
+    setContents(list => [item, ...list]);
+    notify('Content submitted for admin approval. It is not public yet.');
+    navigate('Management');
+  };
+  const approveContent = (id, admin) => {
+    setContents(list => list.map(item => item.id === id ? {...item, status: 'Approved', approvedBy: admin, approvedAt: new Date().toLocaleString(), visibility: 'Public'} : item));
+    notify(`Content approved by ${admin}`);
+  };
+  const rejectContent = (id, admin) => {
+    setContents(list => list.map(item => item.id === id ? {...item, status: 'Rejected', approvedBy: admin, approvedAt: new Date().toLocaleString(), visibility: 'Rejected / Not public'} : item));
+    notify(`Content rejected by ${admin}`);
   };
 
-  const updateRSVP = (eventId, status) => {
-    const user = 'You';
-    setEvents(items => items.map(event => {
-      if (event.id !== eventId) return event;
-      const cleaned = {
-        attending: event.rsvp.attending.filter(n => n !== user),
-        maybe: event.rsvp.maybe.filter(n => n !== user),
-        notAttending: event.rsvp.notAttending.filter(n => n !== user)
-      };
-      cleaned[status] = [user, ...cleaned[status]];
-      return { ...event, rsvp: cleaned };
-    }));
-    showToast('RSVP updated.');
+  const rsvp = (status) => {
+    const name = currentUser?.name || 'Verified Member Demo';
+    const clean = ev => ({...ev, attending: ev.attending.filter(x=>x!==name), maybe: ev.maybe.filter(x=>x!==name), not: ev.not.filter(x=>x!==name)});
+    const changed = clean(selectedEvent);
+    if (status === 'attending') changed.attending = [...changed.attending, name];
+    if (status === 'maybe') changed.maybe = [...changed.maybe, name];
+    if (status === 'not') changed.not = [...changed.not, name];
+    setSelectedEvent(changed);
+    setEvents(list => list.map(ev => ev.id === changed.id ? changed : ev));
+    notify(`${name} marked ${status.replace('not','not attending')}`);
   };
 
-  const pages = useMemo(() => ({
-    home: <HomePage pending={pending} publicApproved={publicApproved} navTo={navTo} openOwner={openOwner} />,
-    about: <AboutPage />,
-    directory: <DirectoryPage openOwner={openOwner} />,
-    profile: <ProfilePage owner={selectedOwner} showToast={showToast} />,
-    contact: <ContactPage />,
-    reminder: <ReminderPage events={events} updateRSVP={updateRSVP} />,
-    submit: <SubmitPage addSubmission={addSubmission} />,
-    admin: <AdminPage submissions={submissions} approveSubmission={approveSubmission} rejectSubmission={rejectSubmission} />,
-    pdf: <PdfPage showToast={showToast} />
-  }), [page, pending, publicApproved, selectedOwner, submissions, events]);
-
-  return <div className="appShell">
+  return <div className="app">
+    {toast && <div className="toast"><Bell size={18}/>{toast}</div>}
     <header className="topbar">
-      <button className="iconButton" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={26}/></button>
-      <button className="brand" onClick={() => navTo('home')}><span className="brandMark">C</span><span>CommunityHub</span></button>
-      <nav className="topnav" aria-label="Main navigation">
-        <button onClick={() => navTo('home')}>Home</button>
-        <button onClick={() => navTo('about')}>About</button>
-        <button onClick={() => navTo('directory')}>Directory</button>
-        <button onClick={() => navTo('contact')}>Contact</button>
-      </nav>
+      <button className="iconBtn" onClick={()=>setDrawer(true)} aria-label="Open menu"><Menu/></button>
+      <div className="brand"><span className="brandMark">A</span><div><strong>AMBI</strong><small>Business Excellence Group</small></div></div>
+      <nav className="desktopNav">{['Home','About','Directory','Contact'].map(t => <button className={page===t?'active':''} onClick={()=>navigate(t)} key={t}>{t}</button>)}</nav>
+      <button className="loginPill" onClick={()=>navigate('Signup')}><LogIn size={17}/> Member Login</button>
     </header>
-
-    {menuOpen && <aside className="drawer" aria-label="Side menu">
-      <div className="drawerPanel">
-        <div className="drawerTop"><strong>Menu</strong><button className="iconButton" onClick={() => setMenuOpen(false)}><X /></button></div>
-        <button onClick={() => navTo('home')}><Home /> Home</button>
-        <button onClick={() => navTo('about')}><Info /> About</button>
-        <button onClick={() => navTo('directory')}><Building2 /> Directory</button>
-        <button onClick={() => navTo('reminder')}><Bell /> Reminder + RSVP</button>
-        <button onClick={() => navTo('submit')}><Plus /> Submit Content</button>
-        <button onClick={() => navTo('admin')}><ShieldCheck /> Admin Approval</button>
-        <button onClick={() => navTo('pdf')}><FileText /> e-PDF Articles</button>
-        <button onClick={() => navTo('contact')}><Mail /> Contact</button>
-      </div>
-    </aside>}
-
-    <main>{pages[page]}</main>
-
-    <footer className="bottomNav" aria-label="Footer actions">
-      <button onClick={() => navTo('reminder')}><Bell /><span>Reminder</span></button>
-      <button className="plusAction" onClick={() => navTo('submit')}><Plus /><span>Submit</span></button>
-      <button onClick={() => navTo('pdf')}><FileText /><span>e-PDF</span></button>
-    </footer>
-
-    {toast && <div className="toast" role="status">{toast}</div>}
-  </div>;
+    {drawer && <div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><span className="brandMark">A</span><b>AMBI Menu</b></div>{tabs.concat('Signup').map(t=><button onClick={()=>navigate(t)} className={page===t?'active drawerItem':'drawerItem'} key={t}>{t}</button>)}</aside></div>}
+    <main>
+      {page === 'Home' && <HomePage navigate={navigate} pendingMembers={pendingMembers} contents={contents} events={events} members={members}/>} 
+      {page === 'About' && <AboutPage/>}
+      {page === 'Directory' && <DirectoryPage sector={sector} setSector={setSector} query={query} setQuery={setQuery} filteredMembers={filteredMembers} setSelectedMember={(m)=>{setSelectedMember(m); navigate('Profile')}}/>}
+      {page === 'Profile' && <ProfilePage member={selectedMember}/>} 
+      {page === 'Reminder' && <ReminderPage events={events} selectedEvent={selectedEvent} setSelectedEvent={setSelectedEvent} rsvp={rsvp} members={members} setSelectedMember={(m)=>{setSelectedMember(m); navigate('Profile')}}/>} 
+      {page === 'Submit' && <SubmitPage currentUser={currentUser} submitContent={submitContent}/>} 
+      {page === 'Management' && <ManagementPage pendingMembers={pendingMembers} members={members} contents={contents} approveMember={approveMember} rejectMember={rejectMember} approveContent={approveContent} rejectContent={rejectContent} setSelectedMember={(m)=>{setSelectedMember(m); navigate('Profile')}}/>} 
+      {page === 'e-PDF' && <PdfPage contents={contents}/>} 
+      {page === 'Signup' && <SignupPage submitMemberSignup={submitMemberSignup} members={members}/>} 
+      {page === 'Contact' && <ContactPage/>}
+    </main>
+    <footer className="bottomNav"><button onClick={()=>navigate('Reminder')}><CalendarDays/>Reminder</button><button className="plus" onClick={()=>navigate('Submit')}><Plus/></button><button onClick={()=>navigate('e-PDF')}><FileText/>e-PDF</button></footer>
+  </div>
 }
 
-function HomePage({ pending, publicApproved, navTo, openOwner }) {
-  return <section className="page">
-    <div className="hero gridTwo">
-      <div>
-        <p className="eyebrow">Accessible community platform</p>
-        <h1>Business directory, reminders, approvals, and shareable articles in one clean platform.</h1>
-        <p className="lead">Designed for all generations, from 18 to 80, with strong contrast, clear navigation, and mobile-app-ready structure.</p>
-        <div className="heroActions"><button className="primary" onClick={() => navTo('directory')}>Explore Directory</button><button className="secondary" onClick={() => navTo('submit')}>Submit Content</button></div>
+function Hero({children, eyebrow, title, desc}) { return <section className="hero"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="heroDesc">{desc}</p>{children}</section> }
+function HomePage({navigate, pendingMembers, contents, events, members}) { 
+  const approved = contents.filter(c=>c.status==='Approved').slice(0,3);
+  const pending = contents.filter(c=>c.status==='Pending').slice(0,3);
+  const featured = members.slice(0,4);
+  const upcoming = events.slice(0,3);
+  const topSectors = sectors.slice(1,7);
+  return <>
+    <section className="homeHeroV10">
+      <div className="homeHeroCopy">
+        <p className="eyebrow">Business Excellence Group · AMBI</p>
+        <h1>One trusted app for members, events, announcements and business connections.</h1>
+        <p>AMBI brings verified member profiles, RSVP events, approved posts, digital visiting cards and e-PDF articles into one clean, mobile-ready platform.</p>
+        <div className="heroActions">
+          <button className="primary" onClick={()=>navigate('Directory')}><Search/>Explore Directory</button>
+          <button className="secondary" onClick={()=>navigate('Reminder')}><CalendarDays/>View Events</button>
+          <button className="secondary" onClick={()=>navigate('Submit')}><Plus/>Submit Update</button>
+        </div>
       </div>
-      <div className="heroCard">
-        <div className="statusRow"><ShieldCheck /><strong>Four-admin verification</strong></div>
-        <p>Pending submissions are visible for review, but they do not become public until approval is complete.</p>
-        <div className="progressStack">{pending.slice(0,2).map(item => <SubmissionMini key={item.id} item={item} />)}</div>
+      <div className="heroPhoneMock">
+        <div className="phoneTop"><span></span><b>AMBI</b><Bell size={16}/></div>
+        <div className="phoneCard active"><small>Next Event</small><b>{upcoming[0]?.title}</b><span>{upcoming[0]?.attending.length} attending · RSVP open</span></div>
+        <div className="phoneCard"><small>Latest Approved</small><b>{approved[0]?.title || 'Member announcement'}</b><span>Approved by {approved[0]?.approvedBy || 'Admin'}</span></div>
+        <div className="phoneGridMini">{featured.slice(0,4).map(m=><div key={m.id}>{m.initials}</div>)}</div>
       </div>
+    </section>
+
+    <section className="homeStatsV10">
+      <Stat n="2017" l="BEG Founded"/>
+      <Stat n={members.length + '+'} l="Verified Directory Profiles"/>
+      <Stat n={sectors.length-1} l="Business Sectors"/>
+      <Stat n="1 Admin" l="Can Verify & Approve"/>
+    </section>
+
+    <section className="homeGridV10">
+      <div className="homeMainColumn">
+        <div className="panel homePanelV10">
+          <div className="sectionHead"><div><p className="eyebrow">Approved feed</p><h2>Latest announcements, ads & offers</h2></div><button className="ghost" onClick={()=>navigate('Submit')}>Submit <ChevronRight size={16}/></button></div>
+          <div className="contentFeed compact">{approved.map(c=><article className="contentCard public spotlightPost" key={c.id}>{c.asset&&<div className="miniAsset"><Paperclip size={15}/>{c.asset.name}</div>}<span className="typePill">{c.type}</span><h3>{c.title}</h3><p>{c.summary}</p><div className="approvalMeta"><BadgeCheck size={15}/> Approved by {c.approvedBy} · {c.approvedAt}</div><small>Submitted by {c.submittedBy} · {c.company}</small></article>)}</div>
+        </div>
+
+        <div className="panel homePanelV10">
+          <div className="sectionHead"><div><p className="eyebrow">Business sectors</p><h2>Search by what people need</h2></div><button className="ghost" onClick={()=>navigate('Directory')}>All sectors <ChevronRight size={16}/></button></div>
+          <div className="sectorStripV10">{topSectors.map(s=><button key={s.id} onClick={()=>navigate('Directory')}><span>{s.icon}</span><b>{s.label}</b><small>{s.count} members</small></button>)}</div>
+        </div>
+      </div>
+
+      <aside className="homeSideColumn">
+        <div className="sideWidgetV10">
+          <div className="sectionHead"><div><p className="eyebrow">Upcoming</p><h2>Events</h2></div><CalendarDays className="mutedIcon"/></div>
+          {upcoming.map(ev=><button className="eventMiniV10" key={ev.id} onClick={()=>navigate('Reminder')}><b>{ev.day}</b><div><strong>{ev.title}</strong><small>{ev.time} · {ev.location}</small><span>{ev.attending.length} attending</span></div></button>)}
+        </div>
+
+        <div className="sideWidgetV10">
+          <div className="sectionHead"><div><p className="eyebrow">Featured</p><h2>Members</h2></div><Users className="mutedIcon"/></div>
+          {featured.map(m=><button className="memberMiniV10" key={m.id} onClick={()=>navigate('Directory')}><div className="logoMonogram mini">{m.initials}</div><div><b>{m.name}</b><small>{m.company}</small></div><ChevronRight size={15}/></button>)}
+        </div>
+      </aside>
+    </section>
+
+    <section className="panel approvalPreviewV10">
+      <div className="sectionHead"><div><p className="eyebrow">Private review area</p><h2>Pending approvals are not public until verified</h2></div><button className="ghost" onClick={()=>navigate('Management')}>Open Management <ChevronRight size={16}/></button></div>
+      <div className="cards">{pendingMembers.slice(0,2).map(p=><div className="card" key={p.id}><UserRound className="mutedIcon"/><h3>{p.name}</h3><p>{p.company}</p><span className={`status ${p.status.toLowerCase()}`}>{p.status}</span></div>)}{pending.map(c=><div className="card" key={c.id}><FileText className="mutedIcon"/><h3>{c.title}</h3><p>{c.type}</p><span className="status pending">Pending Review</span></div>)}</div>
+    </section>
+  </> 
+}
+function Stat({n,l}) {return <div className="stat"><strong>{n}</strong><span>{l}</span></div>}
+function AboutPage(){return <><Hero eyebrow="About BEG" title="Business Excellence Group" desc="Created in 2017 as a collective platform for emerging business establishments, entrepreneurs and professionals across Manipur and beyond."/><section className="panel story"><h2>Built for collaboration, impact and enterprise.</h2><p>BEG brings together first-generation business owners and professionals from manufacturing, hospitality, healthcare, education, e-commerce, retail, automobiles, real estate, construction, IT, finance, FMCG, food and beverage and more.</p><div className="timeline"><b>2017</b><span>BEG Founded</span><b>2020</b><span>COVID humanitarian support</span><b>2026</b><span>AMBI digital member platform</span></div></section><section className="sectorGrid">{sectors.slice(1).map(s=><div className="sectorCard" key={s.id}><span>{s.icon}</span><b>{s.label}</b><small>{s.count} members</small></div>)}</section></>}
+function DirectoryPage({sector,setSector,query,setQuery,filteredMembers,setSelectedMember}){return <><Hero eyebrow="Business Directory" title="Find members by sector, name or service." desc="A premium directory with verified business profiles and digital visiting cards."><div className="searchWrap"><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search businesses, services, members..."/></div></Hero><section className="sectorGrid">{sectors.map(s=><button className={`sectorCard ${sector===s.id?'selected':''}`} onClick={()=>setSector(s.id)} key={s.id}><span>{s.icon}</span><b>{s.label}</b><small>{s.count} members</small></button>)}</section><section className="memberGrid">{filteredMembers.map(m=><button className="memberCard" onClick={()=>setSelectedMember(m)} key={m.id}><div className="logoMonogram">{m.initials}</div><h3>{m.name}</h3><p>{m.company}</p><span>{sectors.find(s=>s.id===m.sector)?.label}</span><small><BadgeCheck size={14}/> Verified by {m.verifiedBy}</small></button>)}</section></>}
+function ProfilePage({member}){return <><section className="profileHero"><div className="cover"><div className="bigLogo">{member.initials}</div></div><div className="profileInfo"><div><p className="eyebrow">Verified Member Profile</p><h1>{member.name}</h1><p>{member.title} · {member.company}</p><span className="verified"><BadgeCheck/> Verified by {member.verifiedBy}</span></div><div className="shareRow"><button><Share2/>Share</button><button><Download/>Card</button></div></div></section><section className="profileGrid"><div className="panel"><h2>About</h2><p>{member.about}</p><h3>Services</h3><div className="chips">{member.services.map(s=><span key={s}>{s}</span>)}</div></div><div className="vcard"><div className="vfront"><div className="logoMonogram">{member.initials}</div><h2>{member.name}</h2><p>{member.company}</p><small>{member.email}</small><small>{member.phone}</small></div><div className="vback"><b>Services</b>{member.services.map(s=><span key={s}>{s}</span>)}<small>Digital visiting card · AMBI</small></div></div></section></>}
+function ReminderPage({events,selectedEvent,setSelectedEvent,rsvp,members,setSelectedMember}){
+  const days=Array.from({length:35},(_,i)=>i+1);
+  const allAttendees=[...selectedEvent.attending,...selectedEvent.maybe,...selectedEvent.not];
+  const findMember=(name)=>members.find(m=>m.name===name || name.includes(m.name.split(' ')[0]) || m.name.includes(name.split(' ')[0]));
+  const attendingCompanies=selectedEvent.attending.map(n=>findMember(n)?.company).filter(Boolean);
+  return <><Hero eyebrow="Event Registration" title="RSVP, see attendees and network before the event." desc="A modern calendar with member-only event registration, visible attendee directory and company participation preview.">
+    <div className="eventHeroStats">
+      <div><strong>{selectedEvent.attending.length}</strong><span>Attending</span></div>
+      <div><strong>{selectedEvent.maybe.length}</strong><span>Maybe</span></div>
+      <div><strong>{selectedEvent.not.length}</strong><span>Not attending</span></div>
     </div>
-    <SectionHeader title="Pending Submissions Awaiting Approval" subtitle="Admin-facing preview only. Not public until verified." />
-    <div className="cardGrid">{pending.map(item => <SubmissionMini key={item.id} item={item} />)}</div>
-    <SectionHeader title="Live Approved Content" subtitle="Only approved items appear publicly." />
-    <div className="cardGrid">{publicApproved.map(item => <article className="card" key={item.id}><CheckCircle2 className="good"/><h3>{item.title}</h3><p>{item.type} by {item.by}</p><span className="pill approved">Live</span></article>)}</div>
-    <SectionHeader title="Featured Business Owners" subtitle="Tap a card to open the profile and digital visiting card." />
-    <div className="ownerGrid">{owners.map(owner => <OwnerCard key={owner.id} owner={owner} onClick={() => openOwner(owner)} />)}</div>
+  </Hero>
+  <section className="calendarLayout">
+    <div className="calendarPanel">
+      <div className="calendarTop"><div><p className="eyebrow">June 2026</p><h2>Business Events Calendar</h2></div><button className="primary"><Plus/>Create Event</button></div>
+      <div className="weekdays">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><b key={d}>{d}</b>)}</div>
+      <div className="monthGrid">{days.map(d=>{const ev=events.find(e=>e.day===d);return <button key={d} className={ev?'hasEvent':''} onClick={()=>ev&&setSelectedEvent(ev)}><span>{d}</span>{ev&&<small>{ev.title}</small>}{ev&&<em>{ev.attending.length} going</em>}</button>})}</div>
+    </div>
+    <aside className="eventSide">
+      <div className="sectionHead"><div><p className="eyebrow">Upcoming</p><h2>Event List</h2></div><Bell className="mutedIcon"/></div>
+      {events.map(ev=><button className={selectedEvent.id===ev.id?'eventItem active':'eventItem'} onClick={()=>setSelectedEvent(ev)} key={ev.id}><b>{ev.title}</b><small>{ev.time} · {ev.location}</small><span>{ev.attending.length} attending · {ev.maybe.length} maybe</span></button>)}
+      <div className="selectedEvent">
+        <p className="eyebrow">Selected Event</p><h3>{selectedEvent.title}</h3>
+        <p>{selectedEvent.time} · {selectedEvent.location}</p>
+        <small>Created by {selectedEvent.createdBy}</small><small>Approved by {selectedEvent.approvedBy}</small>
+        <div className="rsvpBtns"><button onClick={()=>rsvp('attending')}>Attending</button><button onClick={()=>rsvp('maybe')}>Maybe</button><button onClick={()=>rsvp('not')}>Not Attending</button></div>
+      </div>
+    </aside>
   </section>
-}
 
-function AboutPage(){return <section className="page narrow"><p className="eyebrow">About</p><h1>Built for community clarity.</h1><p className="lead">This platform combines directory listings, event reminders, RSVP coordination, content submission, approval workflow, and shareable e-PDF articles in one simple interface.</p><div className="featureList"><Feature icon={<Users/>} title="All-age usability" text="Readable text, strong contrast, large buttons, and predictable navigation."/><Feature icon={<ShieldCheck/>} title="Controlled publishing" text="Submissions stay pending until admins verify them."/><Feature icon={<Globe2/>} title="Future app ready" text="Mobile-first layouts and reusable sections make Android/iOS expansion easier."/></div></section>}
-function DirectoryPage({ openOwner }){return <section className="page"><div className="searchHeader"><div><p className="eyebrow">Directory</p><h1>Professional business profiles</h1></div><div className="searchBox"><Search size={20}/><span>Search coming soon</span></div></div><div className="ownerGrid">{owners.map(owner => <OwnerCard key={owner.id} owner={owner} onClick={() => openOwner(owner)} />)}</div></section>}
-function ProfilePage({ owner, showToast }){return <section className="page"><button className="textButton" onClick={() => history.back()}><ArrowLeft size={18}/> Back</button><div className="profileHero"><img src={owner.photo} alt={owner.name}/><div><p className="eyebrow">{owner.category}</p><h1>{owner.name}</h1><p className="lead">{owner.role}, {owner.business}</p><p>{owner.about}</p><div className="shareRow"><button onClick={() => showToast('Profile link copied') }><Copy/> Copy Link</button><button><Share2/> WhatsApp</button><button>Instagram</button><button>Facebook</button><button>LinkedIn</button><button>TikTok</button></div></div></div><SectionHeader title="Digital Visiting Card" subtitle="Front and back card layout for sharing."/><div className="visitCards"><div className="visitCard front"><div className="logoBig">{owner.logo}</div><h2>{owner.name}</h2><p>{owner.business}</p><p><Phone size={16}/> {owner.contact}</p><p><Mail size={16}/> {owner.email}</p><p><MapPin size={16}/> {owner.address}</p><p><Globe2 size={16}/> {owner.website}</p></div><div className="visitCard back"><h2>Services Offered</h2>{owner.services.map(service => <p key={service}>• {service}</p>)}<strong>{owner.cardMessage}</strong></div></div></section>}
-function ContactPage(){return <section className="page narrow"><p className="eyebrow">Contact</p><h1>Contact the platform team</h1><p className="lead">Use this page later for enquiry forms, admin support, directory onboarding, and business-owner verification.</p><form className="form"><input placeholder="Your name"/><input placeholder="Email or phone"/><textarea placeholder="Message"/><button className="primary" type="button">Send Message</button></form></section>}
-function ReminderPage({ events, updateRSVP }){return <section className="page"><p className="eyebrow">Reminder + RSVP</p><h1>Coordinate events smoothly</h1><p className="lead">People can mark Attending, Maybe, or Not Attending and see grouped attendee lists.</p><div className="eventStack">{events.map(event => <article className="eventCard" key={event.id}><div className="eventTop"><div><h2>{event.title}</h2><p><Clock size={16}/> {event.date} · {event.time}</p><p><MapPin size={16}/> {event.location}</p><p>Created by {event.createdBy}</p></div><div className="rsvpSummary"><strong>{event.rsvp.attending.length}</strong><span>Attending</span></div></div><p>{event.description}</p><div className="rsvpButtons"><button onClick={() => updateRSVP(event.id,'attending')}>Attending</button><button onClick={() => updateRSVP(event.id,'maybe')}>Maybe</button><button onClick={() => updateRSVP(event.id,'notAttending')}>Not Attending</button></div><div className="rsvpGroups"><AttendeeGroup title="Attending" people={event.rsvp.attending}/><AttendeeGroup title="Maybe" people={event.rsvp.maybe}/><AttendeeGroup title="Not Attending" people={event.rsvp.notAttending}/></div></article>)}</div></section>}
-function SubmitPage({ addSubmission }){return <section className="page narrow"><p className="eyebrow">Submit Content</p><h1>Send content for approval</h1><p className="lead">Submitted content enters pending review and will not go live until four-admin approval is complete.</p><form className="form" onSubmit={addSubmission}><input name="title" placeholder="Submission title" required/><select name="type"><option>Article</option><option>Event</option><option>Business Update</option><option>Guide</option></select><input name="by" placeholder="Submitted by"/><textarea placeholder="Short content summary"/><button className="primary" type="submit">Submit for Approval</button></form></section>}
-function AdminPage({ submissions, approveSubmission, rejectSubmission }){return <section className="page"><p className="eyebrow">Admin Dashboard</p><h1>Four-admin approval workflow</h1><div className="tableLike">{submissions.map(item => <article className="approvalRow" key={item.id}><div><h3>{item.title}</h3><p>{item.type} · submitted by {item.by}</p><p>{item.approvals.length}/{item.needed} approvals</p></div><span className={`pill ${item.status.toLowerCase()}`}>{item.status}</span><div className="rowActions"><button onClick={() => approveSubmission(item.id)}>Approve</button><button onClick={() => rejectSubmission(item.id)}>Reject</button></div></article>)}</div></section>}
-function PdfPage({ showToast }){return <section className="page narrow"><p className="eyebrow">Article / e-PDF</p><h1>Downloadable shareable article</h1><article className="pdfPreview"><h2>Community Business Guide</h2><p>This clean article layout is prepared for future PDF generation. It uses readable spacing, large type, and simple sections for easy sharing.</p><p>In a backend version, this page can generate real PDFs from approved articles only.</p></article><button className="primary" onClick={() => { window.print(); showToast('Use Print → Save as PDF'); }}><Download/> Download / Save as PDF</button></section>}
-function SectionHeader({title, subtitle}){return <div className="sectionHeader"><h2>{title}</h2><p>{subtitle}</p></div>}
-function SubmissionMini({ item }){return <article className="card"><Clock className="warn"/><h3>{item.title}</h3><p>{item.type} by {item.by}</p><div className="approvalBar"><span style={{width:`${(item.approvals.length / item.needed) * 100}%`}} /></div><p>{item.approvals.length}/{item.needed} admin approvals</p><span className="pill pending">Pending Review</span></article>}
-function OwnerCard({ owner, onClick }){return <button className="ownerCard" onClick={onClick}><img src={owner.photo} alt={owner.name}/><div><span className="logoSmall">{owner.logo}</span><h3>{owner.name}</h3><p>{owner.business}</p><small>{owner.category}</small></div><ChevronRight/></button>}
-function Feature({icon,title,text}){return <article className="feature">{icon}<h3>{title}</h3><p>{text}</p></article>}
-function AttendeeGroup({title, people}){return <div className="attendeeGroup"><strong>{title} ({people.length})</strong><p>{people.length ? people.join(', ') : 'No one yet'}</p></div>}
+  <section className="eventDetailPanel">
+    <div className="eventBanner">
+      <div><p className="eyebrow">Networking View</p><h2>{selectedEvent.title}</h2><p>Members can see who is coming, discover companies attending and open each member profile before the event.</p></div>
+      <div className="eventBadge"><CalendarDays/><b>{selectedEvent.day}</b><span>June</span></div>
+    </div>
+    <div className="eventStatsGrid">
+      <div><strong>{selectedEvent.attending.length}</strong><span>Confirmed Members</span></div>
+      <div><strong>{selectedEvent.maybe.length}</strong><span>Maybe / Tentative</span></div>
+      <div><strong>{allAttendees.length}</strong><span>Total Responses</span></div>
+      <div><strong>{new Set(attendingCompanies).size}</strong><span>Companies Attending</span></div>
+    </div>
+    <div className="companyStrip">
+      <h3>Attending Companies</h3>
+      <div className="chips">{attendingCompanies.length ? attendingCompanies.map(c=><span key={c}>{c}</span>) : <span>No companies confirmed yet</span>}</div>
+    </div>
+    <div className="attendeeColumns">
+      <AttendeeGroup title="Attending" list={selectedEvent.attending} members={members} findMember={findMember} setSelectedMember={setSelectedMember}/>
+      <AttendeeGroup title="Maybe" list={selectedEvent.maybe} members={members} findMember={findMember} setSelectedMember={setSelectedMember}/>
+      <AttendeeGroup title="Not Attending" list={selectedEvent.not} members={members} findMember={findMember} setSelectedMember={setSelectedMember}/>
+    </div>
+  </section></>}
+function AttendeeGroup({title,list,findMember,setSelectedMember}){return <div className="attendeeGroup"><h3>{title} <span>{list.length}</span></h3>{list.length?list.map(name=>{const m=findMember(name);return <button className="attendeeCard" key={name} onClick={()=>m&&setSelectedMember(m)}><div className="logoMonogram mini">{m?.initials || name.split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><b>{name}</b><small>{m?.company || 'Verified AMBI Member'}</small></div><ChevronRight size={16}/></button>}):<p className="emptyState">No members in this list yet.</p>}</div>}
+function RsvpList({title,list}){return <div className="rsvpList"><b>{title} ({list.length})</b><p>{list.length?list.join(', '):'No members yet'}</p></div>}
+function SignupPage({submitMemberSignup,members}){
+  const [form,setForm]=useState({name:'',email:'',phone:'',company:''});
+  const [live,setLive]=useState([]);
+  const update=(key,value)=>{
+    const next={...form,[key]:value};
+    setForm(next);
+    const text=`${next.name} ${next.email} ${next.company}`.toLowerCase();
+    const matches=members.filter(m=>{
+      const hay=`${m.name} ${m.company} ${m.email} ${m.services.join(' ')}`.toLowerCase();
+      return text.trim().length>3 && text.split(' ').some(x=>x.length>3 && hay.includes(x));
+    }).slice(0,3);
+    setLive(matches);
+  };
+  const submit=(e)=>{e.preventDefault();submitMemberSignup(form)};
+  return <><Hero eyebrow="Member Access" title="Signup with your real BEG member name." desc="Your Name + Email are used to find the correct Directory profile. Phone is optional. An admin verifies the match before your account becomes active."/>
+    <section className="formPanel">
+      <form onSubmit={submit}>
+        <label>Real Name *<input required value={form.name} onChange={e=>update('name',e.target.value)} placeholder="Same name as BEG directory"/></label>
+        <label>Email *<input required type="email" value={form.email} onChange={e=>update('email',e.target.value)} placeholder="name@email.com"/></label>
+        <label>Phone optional<input value={form.phone} onChange={e=>update('phone',e.target.value)} placeholder="Optional"/></label>
+        <label>Company / Business Name<input value={form.company} onChange={e=>update('company',e.target.value)} placeholder="Example: Aadarsh Medicare"/></label>
+        <button className="primary"><ShieldCheck/>Submit for admin verification</button>
+      </form>
+      <div className="panel matchPanel">
+        <h2>Directory profile matching</h2>
+        <p>The system suggests possible matches, but an admin makes the final link. This avoids wrong accounts using another member profile.</p>
+        {live.length>0 ? <div className="matchList">{live.map(m=><div className="matchCard" key={m.id}><div className="logoMonogram mini">{m.initials}</div><div><b>{m.name}</b><span>{m.company}</span><small>{sectors.find(s=>s.id===m.sector)?.label}</small></div></div>)}</div> : <div className="emptyState">Start typing your name, email, or company to preview possible Directory matches.</div>}
+        <div className="verifiedBox"><BadgeCheck/> After approval, posts, event creation, RSVP and comments will show your verified real name.</div>
+      </div>
+    </section></>}
+
+function ManagementPage({pendingMembers,members,contents,approveMember,rejectMember,approveContent,rejectContent,setSelectedMember}){
+  const [chosen,setChosen]=useState({});
+  const getOptions=(p)=>{
+    const candidateIds=p.candidateIds?.length ? p.candidateIds : (p.linkedProfileId ? [p.linkedProfileId] : []);
+    const first=candidateIds.map(id=>members.find(m=>m.id===id)).filter(Boolean);
+    const rest=members.filter(m=>!candidateIds.includes(m.id));
+    return [...first,...rest];
+  };
+  const pendingContent = contents.filter(c=>c.status==='Pending');
+  const reviewedContent = contents.filter(c=>c.status!=='Pending');
+  return <><Hero eyebrow="Management Portal" title="Approve members, posts and business content." desc="Any one of the four admins can approve. Approved content becomes public and carries the approving admin name and date."/>
+    <section className="panel workflowPanel"><div className="workflowStep"><b>1</b><span>Member submits</span></div><ChevronRight/><div className="workflowStep"><b>2</b><span>Admin verifies</span></div><ChevronRight/><div className="workflowStep"><b>3</b><span>Approved item goes public</span></div></section>
+    <section className="panel"><div className="sectionHead"><div><p className="eyebrow">Content approval</p><h2>Pending posts, ads and announcements</h2></div><span className="status pending">{pendingContent.length} pending</span></div><div className="approvalContentGrid">{pendingContent.map(c=><div className="approvalContentCard" key={c.id}><div className="approvalTop"><div className="avatar"><FileText/></div><div><h3>{c.title}</h3><p>{c.type} · {c.visibility}</p></div><span className="status pending">Pending</span></div><p>{c.summary}</p><small>Submitted by {c.submittedBy} · {c.company} · {c.submittedAt}</small><div className="adminActions">{admins.map(a=><button key={a} onClick={()=>approveContent(c.id,a)}><CheckCircle2/>Approve as {a.replace('Admin ','')}</button>)}<button className="reject" onClick={()=>rejectContent(c.id,admins[0])}><XCircle/>Reject</button></div></div>)}</div>{!pendingContent.length && <p className="emptyState">No pending content submissions.</p>}</section>
+    <section className="adminGrid">{pendingMembers.map(p=>{
+      const options=getOptions(p); const selected=chosen[p.id] ?? p.linkedProfileId ?? options[0]?.id ?? '';
+      const linked=members.find(m=>m.id===selected);
+      return <div className="approvalCard" key={p.id}>
+        <div className="approvalTop"><div className="avatar"><UserRound/></div><div><h3>{p.name}</h3><p>{p.company}</p></div><span className={`status ${p.status.toLowerCase()}`}>{p.status}</span></div>
+        <p><Mail size={15}/>{p.email}</p><p><Phone size={15}/>{p.phone}</p><p><Building2 size={15}/>{p.match}</p>
+        <div className="linkBox"><label>Link to Directory Profile<select disabled={p.status!=='Pending'} value={selected} onChange={e=>setChosen({...chosen,[p.id]:e.target.value})}>{options.map(m=><option value={m.id} key={m.id}>{m.name} — {m.company}</option>)}</select></label>{linked&&<button className="ghost previewBtn" onClick={()=>setSelectedMember(linked)}><BriefcaseBusiness size={16}/> Preview linked profile</button>}</div>
+        {p.verifiedBy&&<div className="verifiedBox"><BadgeCheck/> {p.status} by {p.verifiedBy}<br/><small>{p.verifiedOn}</small><br/><small>Linked: {p.linkedProfileName}</small></div>}
+        {p.status==='Pending'&&<div className="adminActions"><div className="adminHint">Approve means: real name verified + account linked to selected Directory profile.</div>{admins.map(a=><button key={a} onClick={()=>approveMember(p.id,a,selected)}><CheckCircle2/>Approve & Link as {a.replace('Admin ','')}</button>)}<button className="reject" onClick={()=>rejectMember(p.id,admins[0])}><XCircle/>Reject</button></div>}
+      </div>})}</section>
+      <section className="panel"><div className="sectionHead"><div><p className="eyebrow">Reviewed archive</p><h2>Approved / rejected content</h2></div></div><div className="contentFeed compact">{reviewedContent.map(c=><article className={`contentCard ${c.status.toLowerCase()}`} key={c.id}><span className="typePill">{c.type}</span><h3>{c.title}</h3><p>{c.summary}</p><div className="approvalMeta"><BadgeCheck size={15}/> {c.status} by {c.approvedBy} · {c.approvedAt}</div></article>)}</div></section>
+      </>}
+
+function SubmitPage({currentUser,submitContent}){
+  const [form,setForm]=useState({type:'Announcement',title:'',summary:'',body:'',asset:null});
+  const memberName=currentUser?.name || 'Verified Member Demo';
+  const handleAsset=(e)=>{
+    const file=e.target.files?.[0];
+    if(!file) return;
+    const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
+    if(!allowed.includes(file.type)){
+      alert('Please upload JPG, PNG, WEBP or PDF only.');
+      e.target.value='';
+      return;
+    }
+    if(file.size > 8 * 1024 * 1024){
+      alert('Please keep files under 8MB for the first version.');
+      e.target.value='';
+      return;
+    }
+    const asset={name:file.name,type:file.type,size:`${(file.size/1024/1024).toFixed(2)} MB`,preview:file.type.startsWith('image/') ? URL.createObjectURL(file) : ''};
+    setForm(prev=>({...prev,asset}));
+  };
+  const clearAsset=()=>setForm(prev=>({...prev,asset:null}));
+  const submit=(e)=>{e.preventDefault();submitContent(form);setForm({type:'Announcement',title:'',summary:'',body:'',asset:null})};
+  return <><Hero eyebrow="Member Submission" title="Submit announcements, ads, offers and opportunities." desc="Submitted content stays private until one approved admin reviews it. Once approved, the approving admin is shown on the public card."/>
+    <section className="formPanel submitLayout"><form onSubmit={submit}>
+      <label>Content Type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option>Announcement</option><option>Advertisement</option><option>Business Offer</option><option>News Update</option><option>Event Notice</option><option>Opportunity</option></select></label>
+      <label>Title *<input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Example: Member offer for June"/></label>
+      <label>Short Summary *<textarea required value={form.summary} onChange={e=>setForm({...form,summary:e.target.value})} placeholder="This appears on the public card after approval."/></label>
+      <div className="uploadBlock">
+        <div className="uploadHead"><div><p className="eyebrow">Optional visual</p><h3>Upload Poster, Banner, Photo or PDF</h3><small>Place your design, flyer, product photo, ad banner or PDF here for admin review.</small></div><UploadCloud/></div>
+        <label className="dropZone"><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={handleAsset}/><span><UploadCloud/> Choose JPG, PNG, WEBP or PDF</span><small>Recommended after the short summary so admins can review the visual quickly.</small></label>
+        {form.asset && <div className="assetPreview">{form.asset.preview ? <img src={form.asset.preview} alt="Uploaded preview"/> : <div className="pdfPreview"><FileText/>PDF</div>}<div><b>{form.asset.name}</b><small>{form.asset.type} · {form.asset.size}</small></div><button type="button" onClick={clearAsset}><Trash2/>Remove</button></div>}
+      </div>
+      <label>Full Details<textarea value={form.body} onChange={e=>setForm({...form,body:e.target.value})} placeholder="More details for the admin and final article page."/></label>
+      <button className="primary"><Plus/>Submit for approval</button>
+    </form>
+    <aside className="panel"><p className="eyebrow">Submission Rules</p><h2>Verified name attached</h2><p>Your content will be submitted as <b>{memberName}</b>. Phone number is not required. Admin approval controls whether the item appears publicly.</p><div className="verifiedBox"><ShieldCheck/> Pending items are private. Uploaded images/PDFs stay for admin review until approved.</div><div className="contentPreview"><span className="typePill">{form.type}</span><h3>{form.title || 'Your title preview'}</h3><p>{form.summary || 'Your short summary preview will appear here.'}</p>{form.asset && <div className="miniAsset">{form.asset.preview ? <ImageIcon/> : <Paperclip/>}{form.asset.name}</div>}<small>Submitted by {memberName}</small></div></aside></section></>}
+
+function PdfPage({contents}){
+  const approved=contents.filter(c=>c.status==='Approved');
+  return <><Hero eyebrow="e-PDF Library" title="Approved articles ready to share or download." desc="Only approved member content appears here. Each article keeps its verification details for trust and accountability."/>
+  <section className="contentFeed pdfGrid">{approved.map(c=><article className="contentCard pdfCard" key={c.id}><span className="typePill">{c.type}</span><h3>{c.title}</h3><p>{c.summary}</p><div className="approvalMeta"><BadgeCheck size={15}/> Approved by {c.approvedBy}</div><button className="primary"><Download/>Download PDF</button><button className="secondary"><Share2/>Share</button></article>)}</section></>}
+
+function ContactPage(){return <><Hero eyebrow="Contact" title="Connect with AMBI / BEG." desc="For member access, directory correction, business collaboration and event support."/><section className="cards"><div className="card"><Mail/><h3>Email</h3><p>info@ambi-beg.org</p></div><div className="card"><Phone/><h3>Phone</h3><p>Optional member contact</p></div><div className="card"><BriefcaseBusiness/><h3>Office</h3><p>Imphal, Manipur</p></div></section></>}
 
 createRoot(document.getElementById('root')).render(<App/>);
