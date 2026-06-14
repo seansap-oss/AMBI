@@ -8,3 +8,87 @@
 
 /* AMBI Home Final v10 */
 .homeHeroV10{max-width:1180px;margin:28px auto 18px;display:grid;grid-template-columns:1.2fr .58fr;gap:22px;align-items:stretch;padding:clamp(26px,5vw,64px);border:1px solid var(--line);border-radius:36px;background:linear-gradient(135deg,rgba(15,76,58,.98),rgba(18,56,45,.94));color:white;box-shadow:var(--shadow);position:relative;overflow:hidden}.homeHeroV10:before{content:"";position:absolute;right:22%;top:-120px;width:340px;height:340px;border-radius:50%;background:rgba(189,143,54,.22)}.homeHeroCopy{position:relative;z-index:1}.homeHeroCopy h1{font-size:clamp(36px,6vw,74px);line-height:.95;letter-spacing:-.058em;max-width:780px;margin:0}.homeHeroCopy p:not(.eyebrow){font-size:clamp(16px,2vw,21px);line-height:1.65;color:rgba(255,255,255,.84);max-width:760px}.heroPhoneMock{position:relative;z-index:1;align-self:center;background:rgba(255,253,248,.96);border:1px solid rgba(255,255,255,.38);border-radius:34px;padding:16px;color:var(--ink);box-shadow:0 30px 70px rgba(0,0,0,.2);min-height:410px}.phoneTop{display:flex;align-items:center;justify-content:space-between;padding:10px 8px 18px;color:var(--green)}.phoneTop span{width:50px;height:6px;border-radius:999px;background:#d9e8df}.phoneCard{border:1px solid var(--line);border-radius:22px;background:#fff;padding:16px;margin-bottom:12px}.phoneCard.active{background:linear-gradient(135deg,#f7fff8,#fff7e8);border-color:rgba(15,76,58,.25)}.phoneCard small,.phoneCard span{display:block;color:var(--muted);margin-top:4px}.phoneGridMini{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.phoneGridMini div{height:74px;border-radius:20px;background:var(--green);color:white;display:grid;place-items:center;font-weight:950;font-size:22px}.homeStatsV10{max-width:1180px;margin:18px auto;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.homeGridV10{max-width:1180px;margin:18px auto;display:grid;grid-template-columns:1fr 360px;gap:18px}.homeMainColumn,.homeSideColumn{display:grid;gap:18px}.homePanelV10{margin:0;max-width:none}.sideWidgetV10{background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:26px;box-shadow:0 16px 44px rgba(31,39,35,.06);padding:20px}.eventMiniV10,.memberMiniV10{width:100%;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px;margin-top:10px;text-align:left;color:var(--ink)}.eventMiniV10>b{width:48px;height:48px;border-radius:16px;background:var(--green);color:white;display:grid;place-items:center;font-size:22px}.eventMiniV10 small,.memberMiniV10 small,.eventMiniV10 span{display:block;color:var(--muted);margin-top:3px}.eventMiniV10 span{color:var(--green);font-weight:850}.memberMiniV10 svg{margin-left:auto;color:var(--green)}.sectorStripV10{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.sectorStripV10 button{border:1px solid var(--line);background:white;border-radius:20px;padding:18px;text-align:left;color:var(--ink)}.sectorStripV10 span{font-size:30px;display:block;margin-bottom:8px}.sectorStripV10 b,.sectorStripV10 small{display:block}.sectorStripV10 small{color:var(--muted);margin-top:4px}.spotlightPost{min-height:230px}.approvalPreviewV10{margin-bottom:96px}@media(max-width:900px){.homeHeroV10,.homeGridV10{grid-template-columns:1fr}.homeStatsV10{grid-template-columns:repeat(2,1fr)}.heroPhoneMock{min-height:0}.sectorStripV10{grid-template-columns:repeat(2,1fr)}}@media(max-width:480px){.homeStatsV10,.sectorStripV10{grid-template-columns:1fr}.homeHeroV10{border-radius:26px;margin-top:14px;padding:26px 18px}.homeHeroCopy h1{font-size:38px}.heroPhoneMock{border-radius:26px}.sideWidgetV10{padding:16px;border-radius:22px}}
+
+/* AMBI Premium Branding v11 */
+:root{
+  --ambi-blue:#172D7A;
+  --ambi-green:#0F4C3A;
+  --ambi-gold:#C59D3D;
+  --ambi-cream:#F7F5F2;
+  --ambi-ink:#161616;
+}
+body{
+  background:
+    radial-gradient(circle at 12% 0%, rgba(197,157,61,.10), transparent 28%),
+    radial-gradient(circle at 90% 8%, rgba(15,76,58,.10), transparent 28%),
+    var(--ambi-cream);
+}
+.topbar{
+  backdrop-filter: blur(18px);
+  background: rgba(247,245,242,.84) !important;
+  border-bottom: 1px solid rgba(15,76,58,.10) !important;
+  box-shadow: 0 12px 38px rgba(22,22,22,.06);
+}
+.brand{gap:12px;align-items:center}
+.brandLogo{
+  width:52px;height:52px;border-radius:18px;object-fit:contain;background:white;padding:5px;
+  border:1px solid rgba(15,76,58,.12);box-shadow:0 10px 26px rgba(15,76,58,.12);
+}
+.drawerLogo{width:62px;height:62px;object-fit:contain;background:white;border-radius:22px;padding:7px;box-shadow:0 12px 28px rgba(0,0,0,.10)}
+.brand strong{letter-spacing:.04em;font-size:20px;color:var(--ambi-blue)}
+.brand small{font-weight:850;color:var(--green)}
+.desktopNav button,.loginPill,.ghost,.secondary,.primary,.bottomNav button,.shareRow button{
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.desktopNav button:hover,.loginPill:hover,.ghost:hover,.secondary:hover,.primary:hover,.bottomNav button:hover,.shareRow button:hover{transform:translateY(-2px)}
+.primary{
+  background:linear-gradient(135deg,var(--ambi-green),#1f6f55) !important;
+  box-shadow:0 16px 36px rgba(15,76,58,.24), inset 0 1px 0 rgba(255,255,255,.24) !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+}
+.secondary,.ghost,.loginPill{
+  border-color:rgba(197,157,61,.30) !important;
+  box-shadow:0 10px 24px rgba(31,39,35,.06);
+}
+.homeHeroV10{
+  background:
+    radial-gradient(circle at 78% 14%, rgba(255,255,255,.20), transparent 18%),
+    radial-gradient(circle at 26% 20%, rgba(197,157,61,.22), transparent 32%),
+    linear-gradient(135deg,#0d3f32,#12382d 54%,#172D7A) !important;
+  border:1px solid rgba(255,255,255,.24) !important;
+  box-shadow:0 34px 88px rgba(15,76,58,.24) !important;
+}
+.heroLogoLockup{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.heroLogoLockup img{
+  width:96px;height:96px;object-fit:contain;background:rgba(255,255,255,.94);border-radius:28px;padding:8px;
+  box-shadow:0 22px 52px rgba(0,0,0,.22);
+  animation:ambiLogoFloat 4.8s ease-in-out infinite;
+}
+@keyframes ambiLogoFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-8px) rotate(1deg)}}
+.heroPhoneMock{box-shadow:0 34px 84px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.55) !important}
+.phoneLogo{height:34px;width:auto;object-fit:contain}
+.card,.memberCard,.sectorCard,.contentCard,.sideWidgetV10,.panel,.vcard,.eventDetailPanel,.profileHero{
+  border-color:rgba(15,76,58,.12) !important;
+  box-shadow:0 18px 44px rgba(22,22,22,.06) !important;
+}
+.memberCard:hover,.sectorCard:hover,.contentCard:hover,.card:hover{
+  border-color:rgba(197,157,61,.38) !important;
+  box-shadow:0 24px 58px rgba(15,76,58,.12) !important;
+}
+.logoMonogram,.bigLogo{
+  background:linear-gradient(135deg,var(--ambi-blue),var(--ambi-green)) !important;
+  color:white !important;
+  box-shadow:0 12px 30px rgba(23,45,122,.18);
+}
+.bottomNav{
+  background:rgba(247,245,242,.92) !important;
+  backdrop-filter:blur(18px);
+  border-top:1px solid rgba(15,76,58,.12) !important;
+}
+.bottomNav .plus{
+  background:linear-gradient(135deg,var(--ambi-green),var(--ambi-blue)) !important;
+  box-shadow:0 16px 34px rgba(15,76,58,.28) !important;
+}
+@media(max-width:650px){
+  .brandLogo{width:44px;height:44px;border-radius:15px}.heroLogoLockup img{width:78px;height:78px;border-radius:24px}.heroLogoLockup{align-items:flex-start;flex-direction:column}
+}

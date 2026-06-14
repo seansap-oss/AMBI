@@ -161,11 +161,11 @@ function App() {
     {toast && <div className="toast"><Bell size={18}/>{toast}</div>}
     <header className="topbar">
       <button className="iconBtn" onClick={()=>setDrawer(true)} aria-label="Open menu"><Menu/></button>
-      <div className="brand"><span className="brandMark">A</span><div><strong>AMBI</strong><small>Business Excellence Group</small></div></div>
+      <div className="brand"><img className="brandLogo" src="/ambi-logo.png" alt="AMBI logo"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></div>
       <nav className="desktopNav">{['Home','About','Directory','Contact'].map(t => <button className={page===t?'active':''} onClick={()=>navigate(t)} key={t}>{t}</button>)}</nav>
       <button className="loginPill" onClick={()=>navigate('Signup')}><LogIn size={17}/> Member Login</button>
     </header>
-    {drawer && <div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><span className="brandMark">A</span><b>AMBI Menu</b></div>{tabs.concat('Signup').map(t=><button onClick={()=>navigate(t)} className={page===t?'active drawerItem':'drawerItem'} key={t}>{t}</button>)}</aside></div>}
+    {drawer && <div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img className="drawerLogo" src="/ambi-logo.png" alt="AMBI logo"/><b>AMBI Menu</b></div>{tabs.concat('Signup').map(t=><button onClick={()=>navigate(t)} className={page===t?'active drawerItem':'drawerItem'} key={t}>{t}</button>)}</aside></div>}
     <main>
       {page === 'Home' && <HomePage navigate={navigate} pendingMembers={pendingMembers} contents={contents} events={events} members={members}/>} 
       {page === 'About' && <AboutPage/>}
@@ -202,7 +202,7 @@ function HomePage({navigate, pendingMembers, contents, events, members}) {
         </div>
       </div>
       <div className="heroPhoneMock">
-        <div className="phoneTop"><span></span><b>AMBI</b><Bell size={16}/></div>
+        <div className="phoneTop"><span></span><img className="phoneLogo" src="/ambi-logo.png" alt="AMBI"/><Bell size={16}/></div>
         <div className="phoneCard active"><small>Next Event</small><b>{upcoming[0]?.title}</b><span>{upcoming[0]?.attending.length} attending · RSVP open</span></div>
         <div className="phoneCard"><small>Latest Approved</small><b>{approved[0]?.title || 'Member announcement'}</b><span>Approved by {approved[0]?.approvedBy || 'Admin'}</span></div>
         <div className="phoneGridMini">{featured.slice(0,4).map(m=><div key={m.id}>{m.initials}</div>)}</div>
