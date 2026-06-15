@@ -407,3 +407,6 @@ canvas {
 /* AMBI v19 Calendar functional update */
 .blankDayV19{opacity:.34;background:transparent!important;border-color:transparent!important;box-shadow:none!important;cursor:default!important}.blankDayV19:hover{transform:none!important;box-shadow:none!important}.adminControlsV19{margin-top:18px;border-top:1px solid var(--line);padding-top:14px;display:grid;gap:8px}.adminControlsV19 button{border:1px solid rgba(15,76,58,.13);background:white;border-radius:14px;padding:10px 12px;color:var(--green);font-weight:900;display:flex;align-items:center;gap:8px}.adminControlsV19 button:last-child{color:#a33a33}.monthGridV16 button{overflow:hidden}.monthGridV16 small{width:100%;max-width:100%;box-sizing:border-box}
 @media(max-width:650px){.monthGridV16 small{width:100%;max-width:100%;font-size:8px;padding:3px 4px;margin-top:4px}.calendarHeaderV16 .viewToggleV16{width:100%;display:flex}.calendarHeaderV16 .viewToggleV16 button{flex:1}.adminControlsV19 button{justify-content:center}}
+
+/* AMBI v19.1 - logo home button + APK navigation polish */
+.brandButton{border:0;background:transparent;padding:0;text-align:left;cursor:pointer;color:inherit}.brandButton:hover{transform:none}.brandButton:focus-visible{outline:3px solid rgba(197,157,61,.45);outline-offset:4px;border-radius:18px}
