@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AMBI</string>
+    <string name="title_activity_main">AMBI</string>
+    <string name="package_name">com.avitsolutions.ambi</string>
+    <string name="custom_url_scheme">com.avitsolutions.ambi</string>
+</resources>

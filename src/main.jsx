@@ -1,409 +1,1474 @@
-import React, { useMemo, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { Menu, Home, Users, CalendarDays, FileText, Plus, Search, CheckCircle2, XCircle, Clock3, ShieldCheck, Mail, Phone, Building2, UserRound, BadgeCheck, Bell, Download, Share2, ChevronRight, LogIn, UserPlus, BriefcaseBusiness, Sparkles, UploadCloud, Image as ImageIcon, Paperclip, Trash2 } from 'lucide-react';
+import React,{useMemo,useState,useEffect} from 'react';
+import {createRoot} from 'react-dom/client';
+import {Menu,Home,Users,CalendarDays,Plus,UserCircle,Bell,Search,Upload,Edit3,Trash2,Save,ChevronRight,Building2,CheckCircle2,Image as ImageIcon,Download,Share2,BriefcaseBusiness,ShieldCheck,X} from 'lucide-react';
 import './styles.css';
 
-const sectors = [
-  { id: 'all', icon: '✨', label: 'All', count: 28 },
-  { id: 'healthcare', icon: '🏥', label: 'Healthcare', count: 5 },
-  { id: 'automotive', icon: '🚗', label: 'Automotive', count: 6 },
-  { id: 'hospitality', icon: '🏨', label: 'Hospitality', count: 4 },
-  { id: 'construction', icon: '🏗️', label: 'Construction', count: 5 },
-  { id: 'technology', icon: '💻', label: 'Technology', count: 3 },
-  { id: 'education', icon: '🎓', label: 'Education', count: 3 },
-  { id: 'media', icon: '📰', label: 'Media', count: 2 },
+const SECTORS=['All','Healthcare','Automotive','Education','Construction','Hospitality','Food & Beverage','Retail & Trading','Technology','Finance & Consulting','Manufacturing','Media & Creative','Travel & Tourism','Real Estate','Professional Services'];
+const CATEGORY_ICONS={
+  'All':'🌐',
+  'Healthcare':'🏥',
+  'Automotive':'🚗',
+  'Education':'🎓',
+  'Construction':'🏗️',
+  'Hospitality':'🏨',
+  'Food & Beverage':'🍽️',
+  'Retail & Trading':'🛍️',
+  'Technology':'💻',
+  'Finance & Consulting':'💼',
+  'Manufacturing':'🏭',
+  'Media & Creative':'🎬',
+  'Travel & Tourism':'✈️',
+  'Real Estate':'🏠',
+  'Professional Services':'📋'
+};
+
+const seedMembers=[
+  {
+    "id": "m001",
+    "name": "A. Hemanta Sharma",
+    "position": "Dealer",
+    "company": "NR Motors",
+    "category": "Automotive",
+    "email": "nrmotors_2017@yahoo.com",
+    "phone": "9436893975",
+    "address": "MG Avenue, Imphal - 795001, Manipur",
+    "services": "Dealer - Mahindra Truck & Bus",
+    "about": "NR Motors is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m002",
+    "name": "Aadarsh Sharma",
+    "position": "Managing Partner",
+    "company": "Aadarsh Lab and Aadarsh Medicare Services",
+    "category": "Healthcare",
+    "email": "aadarshsharma1237@gmail.com",
+    "phone": "7005242123",
+    "address": "Imphal, Manipur",
+    "services": "Diagnostic Centre / Aadarsh Medicare Services",
+    "about": "Aadarsh Lab and Aadarsh Medicare Services is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m003",
+    "name": "Abhishek Jain",
+    "position": "Partner",
+    "company": "Sangai Technologies",
+    "category": "Technology",
+    "email": "",
+    "phone": "",
+    "address": "Imphal, Manipur",
+    "services": "Technology Services",
+    "about": "Sangai Technologies is listed as an approved AMBI/BEG member in the Technology sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m004",
+    "name": "Amardeep Singh Cheema",
+    "position": "Director",
+    "company": "MGT MOTORS PVT LTD",
+    "category": "Automotive",
+    "email": "asc@mgtmotors.com",
+    "phone": "+919436025331",
+    "address": "M G Avenue Imphal Manipur",
+    "services": "Automobile Dealership",
+    "about": "MGT MOTORS PVT LTD is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m005",
+    "name": "Anand Sapam",
+    "position": "Tax & Corporate Law Consultant",
+    "company": "SA AND ASSOCIATES",
+    "category": "Finance & Consulting",
+    "email": "anand.sapam11@gmail.com",
+    "phone": "9612904757",
+    "address": "Keishamthong, Imphal West",
+    "services": "Consultancy Services",
+    "about": "SA AND ASSOCIATES is listed as an approved AMBI/BEG member in the Finance & Consulting sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m006",
+    "name": "Angom Karna",
+    "position": "Proprietor",
+    "company": "Studio11 Salon and Spa, Fitness World, Ahong Achao Keithel",
+    "category": "Retail & Trading",
+    "email": "angomk.psd@gmail.com",
+    "phone": "8731865955",
+    "address": "Singjamei Mathak chongtham leikai, Kakching",
+    "services": "Retail and service sector",
+    "about": "Studio11 Salon and Spa, Fitness World, Ahong Achao Keithel is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m007",
+    "name": "Anthony Naulak",
+    "position": "Proprietor",
+    "company": "Pollito's",
+    "category": "Food & Beverage",
+    "email": "",
+    "phone": "",
+    "address": "Singjamei Chingamathak",
+    "services": "Food Service / Restaurant",
+    "about": "Pollito's is listed as an approved AMBI/BEG member in the Food & Beverage sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m008",
+    "name": "Arihant Patni",
+    "position": "Partner",
+    "company": "Sanmati Traders",
+    "category": "Retail & Trading",
+    "email": "",
+    "phone": "",
+    "address": "Imphal, Manipur",
+    "services": "General Trading",
+    "about": "Sanmati Traders is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m009",
+    "name": "Ashangbam Vivekananda Singh",
+    "position": "Proprietor",
+    "company": "PADMA Medicare",
+    "category": "Healthcare",
+    "email": "padmamedicare2@gmail.com",
+    "phone": "9446026455",
+    "address": "RIMS Road, Near Nityanand Mandir",
+    "services": "Medical / Healthcare",
+    "about": "PADMA Medicare is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m010",
+    "name": "Ashish Warepam",
+    "position": "Proprietor",
+    "company": "JCNT",
+    "category": "Construction",
+    "email": "ashish_w@outlook.com",
+    "phone": "8415930129",
+    "address": "Wangkhei Palace Compound, Imphal East-05, Manipur",
+    "services": "Turnkey Solutions of Elevators, Fire Fighting & CCTV Surveillance",
+    "about": "JCNT is listed as an approved AMBI/BEG member in the Construction sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m011",
+    "name": "B. Surchandra Sharma",
+    "position": "Secretary",
+    "company": "The Fancier Educational Society, Thoubal",
+    "category": "Education",
+    "email": "fanciersur@gmail.com",
+    "phone": "9862074363",
+    "address": "Thoubal Wangmataba",
+    "services": "Education",
+    "about": "The Fancier Educational Society, Thoubal is listed as an approved AMBI/BEG member in the Education sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m012",
+    "name": "Bachaspatimayum Indrashwor Sharma",
+    "position": "Founder/Proprietor",
+    "company": "Laisukol (school), Bachaspati drug agency (pharmacy)",
+    "category": "Healthcare",
+    "email": "indrashworsharma@gmail.com",
+    "phone": "9612503024",
+    "address": "Thoubal Bazar Makha, Thoubal Wangmataba",
+    "services": "Human resources / sales",
+    "about": "Laisukol (school), Bachaspati drug agency (pharmacy) is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m013",
+    "name": "Bankim Nongthombam",
+    "position": "Managing Director",
+    "company": "Imphal Valley School; P.G Petroleum Agency; Sumati and Sons Group",
+    "category": "Education",
+    "email": "bankimnongthombam@gmail.com",
+    "phone": "0385-2427613",
+    "address": "Khabam, Chingmeirong, Moirangkhom Yaiskhul",
+    "services": "Education; Retail",
+    "about": "Imphal Valley School; P.G Petroleum Agency; Sumati and Sons Group is listed as an approved AMBI/BEG member in the Education sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m014",
+    "name": "Benjamin Papao",
+    "position": "Sound Wave",
+    "company": "Benjamin Papao",
+    "category": "Technology",
+    "email": "",
+    "phone": "",
+    "address": "Churchandpur",
+    "services": "Audio/Sound Services",
+    "about": "Benjamin Papao is listed as an approved AMBI/BEG member in the Technology sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m015",
+    "name": "Bigya Pheiroijam",
+    "position": "Proprietor",
+    "company": "Dotcom Computers",
+    "category": "Technology",
+    "email": "singhbigya31@gmail.com",
+    "phone": "9862033771",
+    "address": "Thangal Bazar, M.G. Avenue",
+    "services": "Computer, Peripherals Sales & Service",
+    "about": "Dotcom Computers is listed as an approved AMBI/BEG member in the Technology sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m016",
+    "name": "Chingangbam Gulshan Singh",
+    "position": "Proprietor",
+    "company": "ALS IAS IMPHAL",
+    "category": "Education",
+    "email": "chingangbamg@gmail.com",
+    "phone": "9856209399",
+    "address": "Khurana Ahongei Leirak",
+    "services": "Education",
+    "about": "ALS IAS IMPHAL is listed as an approved AMBI/BEG member in the Education sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m017",
+    "name": "Chingshubam Ashok Meetei",
+    "position": "Managing Director",
+    "company": "Meetei Construction Pvt Ltd",
+    "category": "Education",
+    "email": "ashok@meeteicpl.com",
+    "phone": "9862223333",
+    "address": "Porompat and Ayangpalli Road",
+    "services": "Construction & School",
+    "about": "Meetei Construction Pvt Ltd is listed as an approved AMBI/BEG member in the Education sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m018",
+    "name": "Chongtham Punshiba Singh",
+    "position": "Owner",
+    "company": "Bath Gallery",
+    "category": "Retail & Trading",
+    "email": "punshi11@rediffmail.com",
+    "phone": "9862033724",
+    "address": "Khabam lamkhai",
+    "services": "Tiles and sanitary",
+    "about": "Bath Gallery is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m019",
+    "name": "Dayanand Thounaojam",
+    "position": "Proprietor",
+    "company": "Tilakraj Enterprises",
+    "category": "Manufacturing",
+    "email": "daya7us@gmail.com",
+    "phone": "700585361",
+    "address": "Thangal Bazar, opp. Kasturi Building, Imphal",
+    "services": "Manufacturing & sales of Souvenirs, Trophy, Memento, Rubber stamp, Medals and Brass handicrafts",
+    "about": "Tilakraj Enterprises is listed as an approved AMBI/BEG member in the Manufacturing sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m020",
+    "name": "Donny Sharma",
+    "position": "Distributor",
+    "company": "Radha Enterprises (Fleet Guard filter pvt ltd and Mico)",
+    "category": "Retail & Trading",
+    "email": "risonsmotors14@gmail.com",
+    "phone": "8787574740",
+    "address": "Khoyathong Bazar",
+    "services": "Distribution",
+    "about": "Radha Enterprises (Fleet Guard filter pvt ltd and Mico) is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m021",
+    "name": "Dr M. Dayananda (Pibarel)",
+    "position": "Managing Director",
+    "company": "Medilane Healthtech And Consultancy Services Private Limited",
+    "category": "Healthcare",
+    "email": "medilane.in@gmail.com",
+    "phone": "9366538001",
+    "address": "Porompat Near JNIMS Hospital, Imphal East, Manipur",
+    "services": "Healthcare",
+    "about": "Medilane Healthtech And Consultancy Services Private Limited is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m022",
+    "name": "Dr Ibomcha Thokchom",
+    "position": "Founder & Managing Director",
+    "company": "Advanced Hospital",
+    "category": "Healthcare",
+    "email": "ithokcho@yahoo.co.in",
+    "phone": "+919436026045",
+    "address": "Palace Compound, Imphal East",
+    "services": "Healthcare",
+    "about": "Advanced Hospital is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m023",
+    "name": "Dr James Elangbam",
+    "position": "Managing Director",
+    "company": "Acme Fertility & HealthCare Centre",
+    "category": "Healthcare",
+    "email": "acmefertility@gmail.com",
+    "phone": "6909158069",
+    "address": "Hiyang Hiren Leirak, Palace Compound, Imphal East",
+    "services": "IVF Centre and Gynecological Centre",
+    "about": "Acme Fertility & HealthCare Centre is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m024",
+    "name": "Elizabeth Yambem",
+    "position": "Member",
+    "company": "Dweller Tea",
+    "category": "Food & Beverage",
+    "email": "",
+    "phone": "",
+    "address": "Lamphel",
+    "services": "Beverage/Tea Retail",
+    "about": "Dweller Tea is listed as an approved AMBI/BEG member in the Food & Beverage sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m025",
+    "name": "Gautam Sharma Shamurailatpam",
+    "position": "Executive Editor",
+    "company": "The People's Chronicle / Poknapham",
+    "category": "Media & Creative",
+    "email": "shgautam79@gmail.com",
+    "phone": "9436021276",
+    "address": "Imphal, Manipur",
+    "services": "Media n printing press / Padma printers",
+    "about": "The People's Chronicle / Poknapham is listed as an approved AMBI/BEG member in the Media & Creative sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m026",
+    "name": "Gitkumar Nepram",
+    "position": "Member",
+    "company": "Habitat World (Habitat Design Studio)",
+    "category": "Professional Services",
+    "email": "",
+    "phone": "",
+    "address": "Sagolband",
+    "services": "Architecture/Design",
+    "about": "Habitat World (Habitat Design Studio) is listed as an approved AMBI/BEG member in the Professional Services sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m027",
+    "name": "Hero Thokchom",
+    "position": "Managing Director",
+    "company": "Iboyaima Hospital & Research centre / Golden Transpower / Iboyaima & Sons",
+    "category": "Healthcare",
+    "email": "hthokchom@yahoo.co.in",
+    "phone": "7005123802",
+    "address": "Singjamei Mathak Chongtham Leikai",
+    "services": "Healthcare Products",
+    "about": "Iboyaima Hospital & Research centre / Golden Transpower / Iboyaima & Sons is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m028",
+    "name": "Hodam Priyokumar",
+    "position": "President",
+    "company": "Fancier Educational Society",
+    "category": "Education",
+    "email": "fancierpriyo@gmail.com",
+    "phone": "9612501599",
+    "address": "Thoubal Okram Wangmataba, Thoubal",
+    "services": "Education",
+    "about": "Fancier Educational Society is listed as an approved AMBI/BEG member in the Education sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m029",
+    "name": "Huidrom Bigyanjit Singh",
+    "position": "Director",
+    "company": "HVS Construction Materials Pvt Ltd",
+    "category": "Construction",
+    "email": "bigyanjit_huidrom@yahoo.com",
+    "phone": "8415902857",
+    "address": "Patsoi part 1, New Cacchhar road",
+    "services": "Construction",
+    "about": "HVS Construction Materials Pvt Ltd is listed as an approved AMBI/BEG member in the Construction sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m030",
+    "name": "Irom Umakanta Singh",
+    "position": "Managing Director",
+    "company": "COMET School And Coaching institute",
+    "category": "Education",
+    "email": "usingirom@gmail.com",
+    "phone": "9612637445",
+    "address": "Changangei Uchekon n Keishampat",
+    "services": "Education",
+    "about": "COMET School And Coaching institute is listed as an approved AMBI/BEG member in the Education sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m031",
+    "name": "Jacky Sharma Shamurailatpam",
+    "position": "Member",
+    "company": "Adarsh Lab (Aadarsh Medicare Services)",
+    "category": "Healthcare",
+    "email": "",
+    "phone": "",
+    "address": "Porompat",
+    "services": "Healthcare Services",
+    "about": "Adarsh Lab (Aadarsh Medicare Services) is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m032",
+    "name": "James Kangabam",
+    "position": "Proprietor",
+    "company": "Shree Manikumar Jewellery",
+    "category": "Retail & Trading",
+    "email": "jameskangabam123@gmail.com",
+    "phone": "7005130776",
+    "address": "Sagolband kangabam Leikai",
+    "services": "Retail",
+    "about": "Shree Manikumar Jewellery is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m033",
+    "name": "Javed Siddique",
+    "position": "Proprietor",
+    "company": "JS PLY",
+    "category": "Manufacturing",
+    "email": "jst237@gmail.com",
+    "phone": "",
+    "address": "Thangal bazar / Mantripukhri",
+    "services": "Plywood, Laminates, MDF, etc.",
+    "about": "JS PLY is listed as an approved AMBI/BEG member in the Manufacturing sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m034",
+    "name": "Jayananda",
+    "position": "Member",
+    "company": "Jayananda United Enterprises",
+    "category": "Retail & Trading",
+    "email": "",
+    "phone": "",
+    "address": "Imphal, Manipur",
+    "services": "Trade/Enterprise",
+    "about": "Jayananda United Enterprises is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m035",
+    "name": "Jiten Sharma Aribam",
+    "position": "Proprietor",
+    "company": "Sharma Associates",
+    "category": "Travel & Tourism",
+    "email": "jiten_sharmaa@yahoo.co.in",
+    "phone": "09862241741",
+    "address": "Thoubal Bazar",
+    "services": "Travel/tourism and Garment's",
+    "about": "Sharma Associates is listed as an approved AMBI/BEG member in the Travel & Tourism sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m036",
+    "name": "Kangjam Dinesh",
+    "position": "Member",
+    "company": "OPPO",
+    "category": "Technology",
+    "email": "",
+    "phone": "",
+    "address": "Nongmeibung",
+    "services": "Telecommunications/Retail",
+    "about": "OPPO is listed as an approved AMBI/BEG member in the Technology sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m037",
+    "name": "KB Pangambam",
+    "position": "Proprietor",
+    "company": "KB Enterprises",
+    "category": "Travel & Tourism",
+    "email": "kbento@gmail.com",
+    "phone": "9862028656",
+    "address": "MG Avenue, Imphal",
+    "services": "Tour Operator (Forex, Visa, Passports, Ticketing, Inbound & Outbound)",
+    "about": "KB Enterprises is listed as an approved AMBI/BEG member in the Travel & Tourism sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m038",
+    "name": "Khaba Sanabam",
+    "position": "Proprietor",
+    "company": "Reliable Sales",
+    "category": "Automotive",
+    "email": "khabasanabam@gmail.com",
+    "phone": "09862576922",
+    "address": "Thangal Bazar, Khoyathong Road",
+    "services": "Motor Parts",
+    "about": "Reliable Sales is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m039",
+    "name": "Khagemba Sanabam",
+    "position": "Managing Director",
+    "company": "Manipur Oxygen Plant Pvt. Ltd.",
+    "category": "Healthcare",
+    "email": "ksanabam@gmail.com",
+    "phone": "09862569861",
+    "address": "Ward no.10, Bishnupur District",
+    "services": "Medical and industrial oxygen",
+    "about": "Manipur Oxygen Plant Pvt. Ltd. is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m040",
+    "name": "Kiltan Maibam",
+    "position": "Businessman",
+    "company": "Airport Shopping Mall",
+    "category": "Automotive",
+    "email": "kiltan_maibam24@yahoo.com",
+    "phone": "7085557176",
+    "address": "Changangei airport road, Opp. Imphal Airport",
+    "services": "Furnitures & Furnishing",
+    "about": "Airport Shopping Mall is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m041",
+    "name": "Kshetrimayum Rustamkumar Singh",
+    "position": "Proprietor",
+    "company": "M/s Wangbrel decor",
+    "category": "Retail & Trading",
+    "email": "kshrustamkumar@gmail.com",
+    "phone": "8413877340",
+    "address": "Singjamei chinga mathak opposite UCO Bank",
+    "services": "Home and office Furniture showroom",
+    "about": "M/s Wangbrel decor is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m042",
+    "name": "L Sanatombi Devi",
+    "position": "Chairman",
+    "company": "Iboyaima Group",
+    "category": "Healthcare",
+    "email": "thokongbisana@gmail.com",
+    "phone": "9436890363",
+    "address": "Singjamei Mathak Chongtham leikai",
+    "services": "Health care, Finance, Power, Construction",
+    "about": "Iboyaima Group is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m043",
+    "name": "Laishram Brijkeshowr Singh",
+    "position": "Proprietor",
+    "company": "Phou-Oi-Bee hotel",
+    "category": "Hospitality",
+    "email": "brijkishowr86@gmail.com",
+    "phone": "8731921044",
+    "address": "North AOC Imphal",
+    "services": "Hotel",
+    "about": "Phou-Oi-Bee hotel is listed as an approved AMBI/BEG member in the Hospitality sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m044",
+    "name": "Laishram Kishan Singh",
+    "position": "Proprietor",
+    "company": "Kishan Eco Plastic Industry",
+    "category": "Manufacturing",
+    "email": "kepimd26@gmail.com",
+    "phone": "7005402125",
+    "address": "Tera Urak Industrial Estate, Bishnupur",
+    "services": "Manufacturing PVC pipes",
+    "about": "Kishan Eco Plastic Industry is listed as an approved AMBI/BEG member in the Manufacturing sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m045",
+    "name": "Leishangtham Ronel Singh",
+    "position": "Member",
+    "company": "RSRS",
+    "category": "Professional Services",
+    "email": "",
+    "phone": "",
+    "address": "Patsoi",
+    "services": "Transport/Services",
+    "about": "RSRS is listed as an approved AMBI/BEG member in the Professional Services sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m046",
+    "name": "M Geetaranjan Sharma",
+    "position": "Member",
+    "company": "LISMART INDUSTRIES",
+    "category": "Manufacturing",
+    "email": "lismart_sangai@yahoo.in",
+    "phone": "0385-2412377 / 986209740",
+    "address": "84/Shop-cum Res. Complex (Super Market) Lamphel",
+    "services": "Sangai Plastic water storage tank & Sangai UPVC pipes, sewage pipes",
+    "about": "LISMART INDUSTRIES is listed as an approved AMBI/BEG member in the Manufacturing sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m047",
+    "name": "N. Dhinel Singh",
+    "position": "Proprietor",
+    "company": "ND INDUSTRIES",
+    "category": "Manufacturing",
+    "email": "ndhinelsingh@gmail.com",
+    "phone": "8974036490",
+    "address": "Mantripukhri, Imphal",
+    "services": "Package Drinking Water - Bisleri Brand",
+    "about": "ND INDUSTRIES is listed as an approved AMBI/BEG member in the Manufacturing sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m048",
+    "name": "Nishant Patni",
+    "position": "Member",
+    "company": "PCTC",
+    "category": "Professional Services",
+    "email": "",
+    "phone": "",
+    "address": "Imphal, Manipur",
+    "services": "Transport/Logistics",
+    "about": "PCTC is listed as an approved AMBI/BEG member in the Professional Services sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m049",
+    "name": "P Kebi Singh",
+    "position": "Partner",
+    "company": "Geo-Environmental & Technical Services",
+    "category": "Professional Services",
+    "email": "kebimphal@gmail.com",
+    "phone": "09774196652",
+    "address": "Opposite Manipur University",
+    "services": "Geophysical Services, etc.",
+    "about": "Geo-Environmental & Technical Services is listed as an approved AMBI/BEG member in the Professional Services sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m050",
+    "name": "Pheiroijam Romikanta Singh",
+    "position": "Member",
+    "company": "Iland Nissan",
+    "category": "Automotive",
+    "email": "",
+    "phone": "",
+    "address": "Canchipur",
+    "services": "Automobile Dealership",
+    "about": "Iland Nissan is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m051",
+    "name": "Potsangbam Tomba",
+    "position": "Member",
+    "company": "Tomba Enterprises",
+    "category": "Construction",
+    "email": "",
+    "phone": "",
+    "address": "Singjamei Chingamakha",
+    "services": "Construction",
+    "about": "Tomba Enterprises is listed as an approved AMBI/BEG member in the Construction sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m052",
+    "name": "Pradeep Singh Meitram",
+    "position": "Chief Executive Officer",
+    "company": "Elle's Group",
+    "category": "Food & Beverage",
+    "email": "psmeitram@gmail.com",
+    "phone": "7005203128",
+    "address": "#22, PDA Complex, Lamphelpat, Imphal, Manipur",
+    "services": "Bakery, interior solutions, IT & communications, skill development",
+    "about": "Elle's Group is listed as an approved AMBI/BEG member in the Food & Beverage sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m053",
+    "name": "Puyam Surchand Singh",
+    "position": "Managing Director",
+    "company": "Siroi financial consultancy Pvt Ltd",
+    "category": "Finance & Consulting",
+    "email": "surchandp@gmail.com",
+    "phone": "8118925964",
+    "address": "MG Avenue",
+    "services": "Financial Services",
+    "about": "Siroi financial consultancy Pvt Ltd is listed as an approved AMBI/BEG member in the Finance & Consulting sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m054",
+    "name": "Radhesyam Oinam",
+    "position": "Chief Coordinator",
+    "company": "Network Services",
+    "category": "Retail & Trading",
+    "email": "radhesyamoinam@yahoo.com",
+    "phone": "9436026403",
+    "address": "Changangei Uchekon, Imphal West",
+    "services": "Retail Servicing",
+    "about": "Network Services is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m055",
+    "name": "Rakesh Konjengbam",
+    "position": "Founder",
+    "company": "Ingenix Educare",
+    "category": "Education",
+    "email": "rakesh.konjengbam@gmail.com",
+    "phone": "8730935858",
+    "address": "Konung Mamang New Checkon Road",
+    "services": "Career Guidance and Counseling",
+    "about": "Ingenix Educare is listed as an approved AMBI/BEG member in the Education sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m056",
+    "name": "Rakesh Takhellambam",
+    "position": "Member",
+    "company": "Indra Eye Care",
+    "category": "Healthcare",
+    "email": "",
+    "phone": "",
+    "address": "RIMS Road",
+    "services": "Eye care products",
+    "about": "Indra Eye Care is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m057",
+    "name": "Ramesh Urikhaibam",
+    "position": "Member",
+    "company": "Pranab Motors",
+    "category": "Automotive",
+    "email": "",
+    "phone": "",
+    "address": "Mayang Imphal",
+    "services": "Automotive Retail",
+    "about": "Pranab Motors is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m058",
+    "name": "Ripujeet Nongthombam",
+    "position": "Managing Director",
+    "company": "Lee Waa Group",
+    "category": "Construction",
+    "email": "carter.nongthombam@gmail.com",
+    "phone": "+916009874675",
+    "address": "Ghari Awang Leikai",
+    "services": "Construction, Design & Supply",
+    "about": "Lee Waa Group is listed as an approved AMBI/BEG member in the Construction sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m059",
+    "name": "Rishikesh Khundongbam",
+    "position": "Managing Director",
+    "company": "Mipax Real Estate Consultant Pvt. Ltd.",
+    "category": "Finance & Consulting",
+    "email": "rishikesh.kh36@gmail.com",
+    "phone": "7005230583",
+    "address": "Sangaiprou (Opposite FCS Godown), Imphal West",
+    "services": "Real Estate Syndication, Development Consultant & PMC",
+    "about": "Mipax Real Estate Consultant Pvt. Ltd. is listed as an approved AMBI/BEG member in the Finance & Consulting sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m060",
+    "name": "RK Budhisaran",
+    "position": "Member",
+    "company": "Pioneer Trading",
+    "category": "Retail & Trading",
+    "email": "",
+    "phone": "",
+    "address": "Keisamthong",
+    "services": "General Trading",
+    "about": "Pioneer Trading is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m061",
+    "name": "Vinykesh Patni",
+    "position": "Director",
+    "company": "Dhana Lakshmi Pvt Ltd",
+    "category": "Hospitality",
+    "email": "vinykesh.patni@vpgroup.co.in",
+    "phone": "9862558958",
+    "address": "Padma Bhawan, Dharamsala Road",
+    "services": "Pharmaceuticals, FMCG, Hotel",
+    "about": "Dhana Lakshmi Pvt Ltd is listed as an approved AMBI/BEG member in the Hospitality sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m062",
+    "name": "Vitoo Oinam",
+    "position": "Co-founder and Managing Director",
+    "company": "SF Delivery (Soultifaction Online Services LLP)",
+    "category": "Food & Beverage",
+    "email": "info@soultifaction.com",
+    "phone": "9077808818",
+    "address": "New Checkon Road, Imphal - 795005",
+    "services": "Online Food Delivery",
+    "about": "SF Delivery (Soultifaction Online Services LLP) is listed as an approved AMBI/BEG member in the Food & Beverage sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m063",
+    "name": "Wangkheimayum Khoma",
+    "position": "Member",
+    "company": "Sanamahi Motors",
+    "category": "Automotive",
+    "email": "",
+    "phone": "",
+    "address": "Singjamei Chingamathak",
+    "services": "Automotive Support",
+    "about": "Sanamahi Motors is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m064",
+    "name": "Wangkheimayum Vikram",
+    "position": "Managing Director",
+    "company": "The Sangai Hotel",
+    "category": "Hospitality",
+    "email": "vikram_sana@yahoo.com",
+    "phone": "9612164935",
+    "address": "Nagamapal, Lamabam Leikai, Imphal, Manipur",
+    "services": "Hotel",
+    "about": "The Sangai Hotel is listed as an approved AMBI/BEG member in the Hospitality sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m065",
+    "name": "Wangkhem Lenin",
+    "position": "Member",
+    "company": "W. Ibohal Singh & Sons",
+    "category": "Retail & Trading",
+    "email": "",
+    "phone": "",
+    "address": "W. Ibohal Singh & Sons",
+    "services": "Trading/Retail",
+    "about": "W. Ibohal Singh & Sons is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m066",
+    "name": "Y Ashok Kumar",
+    "position": "Member",
+    "company": "Leibaklei Hotel",
+    "category": "Healthcare",
+    "email": "",
+    "phone": "",
+    "address": "Jiri",
+    "services": "Hospitality",
+    "about": "Leibaklei Hotel is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m067",
+    "name": "Yanglem Surjeet",
+    "position": "Proprietor",
+    "company": "Fastrack Signage",
+    "category": "Media & Creative",
+    "email": "yangsurjeet@gmail.com",
+    "phone": "9856080024",
+    "address": "Thangmeiband Watham Leirai",
+    "services": "Sign and banner service",
+    "about": "Fastrack Signage is listed as an approved AMBI/BEG member in the Media & Creative sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m068",
+    "name": "Yumnam Rupachandra Singh",
+    "position": "Editor in Chief",
+    "company": "Impact TV News",
+    "category": "Media & Creative",
+    "email": "yumnamrupa@gmail.com",
+    "phone": "9612158469",
+    "address": "Paona Bazar, Imphal West, Manipur",
+    "services": "Electronic Media (News)",
+    "about": "Impact TV News is listed as an approved AMBI/BEG member in the Media & Creative sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m069",
+    "name": "RK Nisha",
+    "position": "Member",
+    "company": "Bubble Beats",
+    "category": "Professional Services",
+    "email": "",
+    "phone": "",
+    "address": "Keisampat",
+    "services": "Childhood/Play Programs",
+    "about": "Bubble Beats is listed as an approved AMBI/BEG member in the Professional Services sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m070",
+    "name": "RK Rameshwar",
+    "position": "Member",
+    "company": "RK Fortune",
+    "category": "Construction",
+    "email": "",
+    "phone": "",
+    "address": "Changangei",
+    "services": "Construction",
+    "about": "RK Fortune is listed as an approved AMBI/BEG member in the Construction sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m071",
+    "name": "Robin Seram",
+    "position": "Managing Director",
+    "company": "Epic Films Imphal",
+    "category": "Media & Creative",
+    "email": "robinseram@gmail.com",
+    "phone": "08974615771",
+    "address": "Nongmeibung Seram Leirak, Imphal East",
+    "services": "Advertising Agency & Photo-Video Production House",
+    "about": "Epic Films Imphal is listed as an approved AMBI/BEG member in the Media & Creative sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m072",
+    "name": "Sadokpam Itombi Singh",
+    "position": "Proprietor",
+    "company": "S J Plastic Agency",
+    "category": "Manufacturing",
+    "email": "sjplasticagency@gmail.com",
+    "phone": "9612410442",
+    "address": "Sagolband Sadokpam Leikai",
+    "services": "Manufacturing plastic households items",
+    "about": "S J Plastic Agency is listed as an approved AMBI/BEG member in the Manufacturing sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m073",
+    "name": "Santosh Saikhom",
+    "position": "Member",
+    "company": "Santosh Electronics",
+    "category": "Technology",
+    "email": "",
+    "phone": "",
+    "address": "Moreh",
+    "services": "Electronics Retail",
+    "about": "Santosh Electronics is listed as an approved AMBI/BEG member in the Technology sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m074",
+    "name": "Sinam Haridas Singh",
+    "position": "Member",
+    "company": "Eastern Motors",
+    "category": "Automotive",
+    "email": "",
+    "phone": "",
+    "address": "Mantripukhri",
+    "services": "Automotive Supply",
+    "about": "Eastern Motors is listed as an approved AMBI/BEG member in the Automotive sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m075",
+    "name": "Sougaijam Brainy",
+    "position": "Member",
+    "company": "SB & Sons",
+    "category": "Retail & Trading",
+    "email": "",
+    "phone": "",
+    "address": "Moirangkhom",
+    "services": "Retail/Trade",
+    "about": "SB & Sons is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m076",
+    "name": "Thangjam Arunkumar",
+    "position": "Member",
+    "company": "Arun Enterprises",
+    "category": "Retail & Trading",
+    "email": "",
+    "phone": "",
+    "address": "Chingmeirong",
+    "services": "Commercial Enterprises",
+    "about": "Arun Enterprises is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m077",
+    "name": "Thangjam Roshan Singh",
+    "position": "Director",
+    "company": "AMP E SERVICES PVT LTD",
+    "category": "Technology",
+    "email": "roshanamp@gmail.com",
+    "phone": "8132953246",
+    "address": "Paona Bazar, Imphal, Manipur",
+    "services": "Electronics and Mobile",
+    "about": "AMP E SERVICES PVT LTD is listed as an approved AMBI/BEG member in the Technology sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m078",
+    "name": "Thoudam Shanjubala Devi",
+    "position": "Proprietor",
+    "company": "SAS Enterprises",
+    "category": "Retail & Trading",
+    "email": "sharjubala@gmail.com",
+    "phone": "8974053214",
+    "address": "Thoubal Awang Leikai, Thoubal 795138",
+    "services": "FMCG",
+    "about": "SAS Enterprises is listed as an approved AMBI/BEG member in the Retail & Trading sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m079",
+    "name": "Tongbram Tarunkumar",
+    "position": "Proprietor",
+    "company": "Kohort Design & Build",
+    "category": "Construction",
+    "email": "kohort.design@gmail.com",
+    "phone": "8257811079",
+    "address": "Singjamei Mathak Chongtham Leikai",
+    "services": "Building Planning and Construction",
+    "about": "Kohort Design & Build is listed as an approved AMBI/BEG member in the Construction sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  },
+  {
+    "id": "m080",
+    "name": "Vincent Koijam",
+    "position": "Director",
+    "company": "Daani Hotels and Resorts Pvt Ltd",
+    "category": "Hospitality",
+    "email": "vincentkoijam@gmail.com",
+    "phone": "8730922881",
+    "address": "Thangmeiband",
+    "services": "Hospitality",
+    "about": "Daani Hotels and Resorts Pvt Ltd is listed as an approved AMBI/BEG member in the Healthcare sector.",
+    "display": "initials",
+    "photo": "",
+    "logo": "",
+    "verified": true,
+    "approvedBy": "AMBI Directory Import"
+  }
+];
+const blank={name:'',position:'',company:'',category:'Healthcare',email:'',phone:'',address:'',services:'',about:'',display:'initials',photo:'',logo:'',verified:true,approvedBy:'Admin'};
+function initials(name,company){const source=(company||name||'AMBI').trim().split(/\s+/);return source.slice(0,2).map(s=>s[0]).join('').toUpperCase();}
+function Avatar({m,big=false}){let src=m.display==='photo'?m.photo:m.display==='logo'?m.logo:'';return src?<img className={big?'avatarImg big':'avatarImg'} src={src}/>:<div className={big?'avatarMono big':'avatarMono'}>{initials(m.name,m.company)}</div>}
+function readFile(file,cb){if(!file)return;const r=new FileReader();r.onload=()=>cb(r.result);r.readAsDataURL(file)}
+
+const profileActivity=[
+ {id:'a1',type:'Advertisement',title:'Submitted business promotion banner',status:'Approved',date:'This month',approvedBy:'Committee Admin'},
+ {id:'a2',type:'Event',title:'RSVP confirmed for Business Networking Evening',status:'Completed',date:'Last week',approvedBy:'AMBI'},
+ {id:'a3',type:'Profile',title:'Updated digital visiting card details',status:'Completed',date:'Today',approvedBy:'Member'}
 ];
 
-const members = [
-  { id: 'aadarsh', name: 'Aadarsh Sharma', title: 'Managing Partner', company: 'Aadarsh Lab & Medicare Services', sector: 'healthcare', phone: '7005242123', email: 'aadarshsharma1237@gmail.com', initials: 'AM', verified: true, verifiedBy: 'Admin L. Ibomcha', services: ['Diagnostic Centre', 'Medicare Services', 'Health Support'], about: 'Healthcare and diagnostic services focused on reliable access and professional care.' },
-  { id: 'island', name: 'Rakesh Laishram', title: 'Director', company: 'Island Nissan', sector: 'automotive', phone: '9862011111', email: 'info@islandnissan.in', initials: 'IN', verified: true, verifiedBy: 'Admin N. Kumar', services: ['Automobile Sales', 'Vehicle Service', 'Customer Support'], about: 'Automotive dealership and service support for modern mobility needs.' },
-  { id: 'sangaihotel', name: 'K. Ranjit', title: 'Proprietor', company: 'Sangai Hotel', sector: 'hospitality', phone: '9436032100', email: 'booking@sangaihotel.com', initials: 'SH', verified: true, verifiedBy: 'Admin A. Singh', services: ['Hotel Rooms', 'Events', 'Hospitality'], about: 'Hospitality services for guests, travellers, and business visitors.' },
-  { id: 'impacttv', name: 'Y. Romen', title: 'Founder', company: 'Impact TV', sector: 'media', phone: '7000000000', email: 'contact@impacttv.in', initials: 'IT', verified: true, verifiedBy: 'Admin L. Ibomcha', services: ['Media Coverage', 'Broadcast', 'Production'], about: 'Media and broadcast platform covering public information and regional stories.' },
-  { id: 'sangaitech', name: 'Ningthoujam Dev', title: 'Founder', company: 'Sangai Technologies', sector: 'technology', phone: '8787000000', email: 'hello@sangaitech.in', initials: 'ST', verified: true, verifiedBy: 'Admin K. Devi', services: ['IT Services', 'Software', 'Digital Support'], about: 'Technology support and digital services for local businesses.' },
-  { id: 'comet', name: 'T. Robindro', title: 'Chairman', company: 'COMET School', sector: 'education', phone: '7085000000', email: 'office@cometschool.in', initials: 'CS', verified: true, verifiedBy: 'Admin N. Kumar', services: ['Education', 'Academic Programs', 'Student Development'], about: 'Educational institution focused on student growth and academic excellence.' },
-  { id: 'hvs', name: 'H. Vikram', title: 'Managing Director', company: 'HVS Construction', sector: 'construction', phone: '9366000000', email: 'projects@hvs.co.in', initials: 'HC', verified: true, verifiedBy: 'Admin A. Singh', services: ['Construction', 'Project Delivery', 'Civil Works'], about: 'Construction and project delivery services for commercial and private works.' },
+const events=[
+  {id:'ev1',day:7,title:'Business Networking Evening',time:'4:00 PM',location:'BEG Office, Imphal',createdBy:'AMBI Committee',approvedBy:'Admin 1',attending:['Aadarsh Sharma','Anand Sapam','Robin Seram','Vincent Koijam'],maybe:['Khaba Sanabam','Vitoo Oinam'],not:['Arihant Patni']},
+  {id:'ev2',day:14,title:'Member Directory Review',time:'11:30 AM',location:'Online / Committee Desk',createdBy:'AMBI Admin',approvedBy:'Super Admin',attending:['A. Hemanta Sharma','Amardeep Singh Cheema','Yumnam Rupachandra Singh'],maybe:['Abhishek Jain'],not:[]},
+  {id:'ev3',day:21,title:'Business Excellence Meet',time:'5:00 PM',location:'Imphal, Manipur',createdBy:'Business Excellence Group',approvedBy:'Admin 2',attending:['Dr Ibomcha Thokchom','Irom Umakanta Singh','KB Pangambam','Thangjam Roshan Singh'],maybe:['Wangkheimayum Vikram','Puyam Surchand Singh'],not:['Anthony Naulak']}
 ];
 
-const pendingMembersInitial = [
-  { id: 'pm-1', name: 'Th. Sanatomba', email: 'sanatomba@example.com', phone: 'Optional not provided', company: 'Sanatomba Trading', sector: 'retail', submitted: 'Today, 10:20 AM', match: 'Possible directory match: Sanatomba Trading', status: 'Pending' },
-  { id: 'pm-2', name: 'R.K. Binodini', email: 'binodini@example.com', phone: '9862123000', company: 'Leibaklei Hospitality', sector: 'hospitality', submitted: 'Today, 9:05 AM', match: 'Matched: Leibaklei Hotel', status: 'Pending' },
-  { id: 'pm-3', name: 'N. Premkumar', email: 'prem@example.com', phone: 'Optional not provided', company: 'Eastern Motors', sector: 'automotive', submitted: 'Yesterday, 5:44 PM', match: 'Matched: Eastern Motors', status: 'Pending' },
+const notifications=[
+  {t:'New member directory installed',d:'All approved AMBI/BEG member profiles are available in the Directory.'},
+  {t:'Upcoming reminder',d:'Business Networking Evening is listed in the Reminder calendar.'},
+  {t:'Submission status',d:'Member advertisements and announcements will show approval details after review.'}
 ];
 
-const eventsInitial = [
-  { id: 'ev-1', day: 7, title: 'BEG Business Meet', time: '10:30 AM', location: 'Imphal Hotel', createdBy: 'Aadarsh Sharma', approvedBy: 'Admin L. Ibomcha', attending: ['Aadarsh Sharma', 'Rakesh Laishram'], maybe: ['K. Ranjit'], not: ['Y. Romen'] },
-  { id: 'ev-2', day: 15, title: 'SYNERGY Planning', time: '3:00 PM', location: 'BEG Office', createdBy: 'Sangai Technologies', approvedBy: 'Admin K. Devi', attending: ['Ningthoujam Dev'], maybe: ['T. Robindro'], not: [] },
-  { id: 'ev-3', day: 22, title: 'Member Networking Evening', time: '5:30 PM', location: 'City Convention Hall', createdBy: 'Island Nissan', approvedBy: 'Admin N. Kumar', attending: ['Rakesh Laishram', 'H. Vikram'], maybe: [], not: ['Aadarsh Sharma'] },
-];
-
-const contentInitial = [
-  { id: 'ct-1', type: 'Announcement', title: 'SYNERGY Business Summit Planning Open', summary: 'Members are invited to submit ideas, sponsorship interest and delegate recommendations for the upcoming SYNERGY business summit.', body: 'The organizing committee is collecting member suggestions for speakers, partner businesses and cross-border trade discussion topics.', submittedBy: 'Aadarsh Sharma', company: 'Aadarsh Lab & Medicare Services', submittedAt: 'Today, 11:10 AM', status: 'Approved', approvedBy: 'Admin L. Ibomcha', approvedAt: 'Today, 11:35 AM', visibility: 'Public' },
-  { id: 'ct-2', type: 'Business Offer', title: 'Member Offer: Fleet Service Support', summary: 'Island Nissan is offering priority service booking for verified BEG members during June.', body: 'Verified members can contact the Island Nissan team to access priority service slots and consultation for fleet maintenance needs.', submittedBy: 'Rakesh Laishram', company: 'Island Nissan', submittedAt: 'Today, 9:00 AM', status: 'Pending', approvedBy: '', approvedAt: '', visibility: 'Private until approved' },
-  { id: 'ct-3', type: 'Event Notice', title: 'Healthcare Sector Networking Roundtable', summary: 'A focused networking session for healthcare, diagnostic and wellness-sector members.', body: 'The roundtable will allow healthcare members to exchange services, partnership ideas and community health initiative proposals.', submittedBy: 'Aadarsh Sharma', company: 'Aadarsh Lab & Medicare Services', submittedAt: 'Yesterday, 4:20 PM', status: 'Pending', approvedBy: '', approvedAt: '', visibility: 'Private until approved' },
-];
-
-
-const admins = ['Admin L. Ibomcha', 'Admin N. Kumar', 'Admin K. Devi', 'Admin A. Singh'];
-const tabs = ['Home', 'About', 'Directory', 'Reminder', 'Submit', 'Management', 'e-PDF'];
-
-function App() {
-  const [page, setPage] = useState('Home');
-  const [drawer, setDrawer] = useState(false);
-  const [sector, setSector] = useState('all');
-  const [query, setQuery] = useState('');
-  const [selectedMember, setSelectedMember] = useState(members[0]);
-  const [pendingMembers, setPendingMembers] = useState(pendingMembersInitial);
-  const [events, setEvents] = useState(eventsInitial);
-  const [selectedEvent, setSelectedEvent] = useState(eventsInitial[0]);
-  const [contents, setContents] = useState(contentInitial);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [toast, setToast] = useState('');
-
-  const filteredMembers = useMemo(() => members.filter(m => (sector === 'all' || m.sector === sector) && `${m.name} ${m.company} ${m.services.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [sector, query]);
-
-  const navigate = (target) => { setPage(target); setDrawer(false); window.scrollTo({top:0, behavior:'smooth'}); };
-  const notify = (msg) => { setToast(msg); try { new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch {} setTimeout(()=>setToast(''), 2500); };
-
-  const approveMember = (id, admin, linkedProfileId) => {
-    const linked = members.find(m => m.id === linkedProfileId);
-    setPendingMembers(items => items.map(item => item.id === id ? {
-      ...item,
-      status: 'Approved',
-      linkedProfileId: linked?.id || item.linkedProfileId,
-      linkedProfileName: linked ? `${linked.name} • ${linked.company}` : item.linkedProfileName || 'No profile linked',
-      verifiedBy: admin,
-      verifiedOn: new Date().toLocaleString()
-    } : item));
-    notify(`Member approved by ${admin}${linked ? ` and linked to ${linked.company}` : ''}`);
-  };
-  const rejectMember = (id, admin) => {
-    setPendingMembers(items => items.map(item => item.id === id ? {...item, status: 'Rejected', verifiedBy: admin, verifiedOn: new Date().toLocaleString()} : item));
-    notify(`Member rejected by ${admin}`);
-  };
-
-  const submitMemberSignup = (form) => {
-    const text = `${form.name} ${form.email} ${form.company}`.toLowerCase();
-    const candidates = members
-      .map(m => {
-        let score = 0;
-        if (form.email && m.email.toLowerCase() === form.email.toLowerCase()) score += 90;
-        if (form.name && m.name.toLowerCase().includes(form.name.toLowerCase())) score += 45;
-        if (form.company && m.company.toLowerCase().includes(form.company.toLowerCase())) score += 45;
-        if (`${m.name} ${m.company} ${m.email}`.toLowerCase().split(' ').some(part => part.length > 4 && text.includes(part))) score += 10;
-        return {...m, score};
-      })
-      .filter(m => m.score > 0)
-      .sort((a,b)=>b.score-a.score)
-      .slice(0,3);
-    const best = candidates[0];
-    const request = {
-      id: `pm-${Date.now()}`,
-      name: form.name,
-      email: form.email,
-      phone: form.phone || 'Optional not provided',
-      company: form.company || 'Not provided',
-      sector: best?.sector || 'pending',
-      submitted: new Date().toLocaleString(),
-      match: best ? `Suggested match: ${best.name} • ${best.company}` : 'No automatic match — admin must link manually',
-      candidateIds: candidates.map(c=>c.id),
-      linkedProfileId: best?.id || '',
-      linkedProfileName: best ? `${best.name} • ${best.company}` : '',
-      status: 'Pending'
-    };
-    setPendingMembers(items => [request, ...items]);
-    setCurrentUser({name: form.name, email: form.email, pending: true});
-    notify('Signup submitted. Admin must verify and link the directory profile.');
-    navigate('Management');
-  };
-  const submitContent = (form) => {
-    const member = currentUser?.linkedProfile || members[0];
-    const item = {
-      id: `ct-${Date.now()}`,
-      type: form.type,
-      title: form.title,
-      summary: form.summary,
-      body: form.body,
-      asset: form.asset || null,
-      submittedBy: currentUser?.name || member.name,
-      company: member.company || form.company || 'Verified AMBI Member',
-      submittedAt: new Date().toLocaleString(),
-      status: 'Pending',
-      approvedBy: '',
-      approvedAt: '',
-      visibility: 'Private until approved'
-    };
-    setContents(list => [item, ...list]);
-    notify('Content submitted for admin approval. It is not public yet.');
-    navigate('Management');
-  };
-  const approveContent = (id, admin) => {
-    setContents(list => list.map(item => item.id === id ? {...item, status: 'Approved', approvedBy: admin, approvedAt: new Date().toLocaleString(), visibility: 'Public'} : item));
-    notify(`Content approved by ${admin}`);
-  };
-  const rejectContent = (id, admin) => {
-    setContents(list => list.map(item => item.id === id ? {...item, status: 'Rejected', approvedBy: admin, approvedAt: new Date().toLocaleString(), visibility: 'Rejected / Not public'} : item));
-    notify(`Content rejected by ${admin}`);
-  };
-
-  const rsvp = (status) => {
-    const name = currentUser?.name || 'Verified Member Demo';
-    const clean = ev => ({...ev, attending: ev.attending.filter(x=>x!==name), maybe: ev.maybe.filter(x=>x!==name), not: ev.not.filter(x=>x!==name)});
-    const changed = clean(selectedEvent);
-    if (status === 'attending') changed.attending = [...changed.attending, name];
-    if (status === 'maybe') changed.maybe = [...changed.maybe, name];
-    if (status === 'not') changed.not = [...changed.not, name];
-    setSelectedEvent(changed);
-    setEvents(list => list.map(ev => ev.id === changed.id ? changed : ev));
-    notify(`${name} marked ${status.replace('not','not attending')}`);
-  };
-
-  return <div className="app">
-    {toast && <div className="toast"><Bell size={18}/>{toast}</div>}
-    <header className="topbar">
-      <button className="iconBtn" onClick={()=>setDrawer(true)} aria-label="Open menu"><Menu/></button>
-      <div className="brand"><img className="brandLogo" src="/ambi-logo.png" alt="AMBI logo"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></div>
-      <nav className="desktopNav">{['Home','About','Directory','Contact'].map(t => <button className={page===t?'active':''} onClick={()=>navigate(t)} key={t}>{t}</button>)}</nav>
-      <button className="loginPill" onClick={()=>navigate('Signup')}><LogIn size={17}/> Member Login</button>
-    </header>
-    {drawer && <div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img className="drawerLogo" src="/ambi-logo.png" alt="AMBI logo"/><b>AMBI Menu</b></div>{tabs.concat('Signup').map(t=><button onClick={()=>navigate(t)} className={page===t?'active drawerItem':'drawerItem'} key={t}>{t}</button>)}</aside></div>}
-    <main>
-      {page === 'Home' && <HomePage navigate={navigate} pendingMembers={pendingMembers} contents={contents} events={events} members={members}/>} 
-      {page === 'About' && <AboutPage/>}
-      {page === 'Directory' && <DirectoryPage sector={sector} setSector={setSector} query={query} setQuery={setQuery} filteredMembers={filteredMembers} setSelectedMember={(m)=>{setSelectedMember(m); navigate('Profile')}}/>}
-      {page === 'Profile' && <ProfilePage member={selectedMember}/>} 
-      {page === 'Reminder' && <ReminderPage events={events} selectedEvent={selectedEvent} setSelectedEvent={setSelectedEvent} rsvp={rsvp} members={members} setSelectedMember={(m)=>{setSelectedMember(m); navigate('Profile')}}/>} 
-      {page === 'Submit' && <SubmitPage currentUser={currentUser} submitContent={submitContent}/>} 
-      {page === 'Management' && <ManagementPage pendingMembers={pendingMembers} members={members} contents={contents} approveMember={approveMember} rejectMember={rejectMember} approveContent={approveContent} rejectContent={rejectContent} setSelectedMember={(m)=>{setSelectedMember(m); navigate('Profile')}}/>} 
-      {page === 'e-PDF' && <PdfPage contents={contents}/>} 
-      {page === 'Signup' && <SignupPage submitMemberSignup={submitMemberSignup} members={members}/>} 
-      {page === 'Contact' && <ContactPage/>}
-    </main>
-    <footer className="bottomNav"><button onClick={()=>navigate('Reminder')}><CalendarDays/>Reminder</button><button className="plus" onClick={()=>navigate('Submit')}><Plus/></button><button onClick={()=>navigate('e-PDF')}><FileText/>e-PDF</button></footer>
-  </div>
+class ErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={hasError:false};}
+  static getDerivedStateFromError(){return {hasError:true};}
+  componentDidCatch(error){console.error('AMBI page recovered:',error);}
+  componentDidUpdate(prevProps){if(prevProps.page!==this.props.page&&this.state.hasError){this.setState({hasError:false});}}
+  render(){if(this.state.hasError){return <section className="panel"><p className="eyebrow">Page recovered</p><h2>This section had a loading issue.</h2><p>Please choose another page or refresh. The app shell and directory data are still protected.</p></section>}return this.props.children;}
 }
 
-function Hero({children, eyebrow, title, desc}) { return <section className="hero"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="heroDesc">{desc}</p>{children}</section> }
-function HomePage({navigate, pendingMembers, contents, events, members}) { 
-  const approved = contents.filter(c=>c.status==='Approved').slice(0,3);
-  const pending = contents.filter(c=>c.status==='Pending').slice(0,3);
-  const featured = members.slice(0,4);
-  const upcoming = events.slice(0,3);
-  const topSectors = sectors.slice(1,7);
+function App(){const [page,setPage]=useState('home');const [drawer,setDrawer]=useState(false);const [members,setMembers]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem('ambiMembersRealV2'));return Array.isArray(saved)&&saved.length>=seedMembers.length?saved:seedMembers}catch{return seedMembers}});const [query,setQuery]=useState('');const [cat,setCat]=useState('All');const [selected,setSelected]=useState(seedMembers[0]);const [form,setForm]=useState(blank);const [editing,setEditing]=useState(null);const [toast,setToast]=useState('');const [loggedIn,setLoggedIn]=useState(()=>localStorage.getItem('ambiLoggedIn')!=='false');const [contacts,setContacts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiContactsV18'))||[]}catch{return []}});useEffect(()=>localStorage.setItem('ambiMembersRealV2',JSON.stringify(members)),[members]);useEffect(()=>localStorage.setItem('ambiLoggedIn',loggedIn?'true':'false'),[loggedIn]);useEffect(()=>localStorage.setItem('ambiContactsV18',JSON.stringify(contacts)),[contacts]);useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),2400);return()=>clearTimeout(t)}},[toast]);const filtered=useMemo(()=>members.filter(m=>(cat==='All'||m.category===cat)&&(`${m.name} ${m.company} ${m.category} ${m.services}`.toLowerCase().includes(query.toLowerCase()))),[members,cat,query]);const sectors=SECTORS.map(s=>({name:s,count:s==='All'?members.length:members.filter(m=>m.category===s).length}));function saveMember(){if(!form.name||!form.company){setToast('Name and company are required');return} if(editing){setMembers(ms=>ms.map(m=>m.id===editing?{...form,id:editing}:m));setToast('Member profile updated')}else{setMembers(ms=>[{...form,id:'m'+Date.now()},...ms]);setToast('New member saved to directory')}setForm(blank);setEditing(null);setPage('directory')}function edit(m){setForm(m);setEditing(m.id);setPage('management')}function del(id){setMembers(ms=>ms.filter(m=>m.id!==id));setToast('Member deleted from local directory')}function openProfile(m){if(selected?.id&&m.id!==selected.id){setContacts(cs=>cs.some(c=>c.id===m.id)?cs:[{id:m.id,name:m.name,company:m.company,date:new Date().toLocaleDateString()},...cs].slice(0,8));}setSelected(m);setPage('profile')}function logout(){setLoggedIn(false);setToast('Logged out successfully');setPage('profile')}function login(){setLoggedIn(true);setToast('Logged in');setPage('profile')}return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><div className="brand"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></div><nav><button className={page==='home'?'active':''} onClick={()=>setPage('home')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>setPage('directory')}>Directory</button><button className={page==='reminder'?'active':''} onClick={()=>setPage('reminder')}>Reminder</button></nav><button className="notif" onClick={()=>setPage('notifications')}><Bell/><span>3</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>Members App</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','reminder','submit','notifications','management'].map(p=><button key={p} className={page===p?'active':''} onClick={()=>{setPage(p);setDrawer(false)}}>{p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main><ErrorBoundary key={page} page={page}>{page==='home'&&<HomePage members={members} setPage={setPage} openProfile={openProfile}/>} {page==='directory'&&<Directory members={filtered} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={login} activity={profileActivity}/>} {page==='management'&&<Management form={form} setForm={setForm} saveMember={saveMember} editing={editing} cancel={()=>{setEditing(null);setForm(blank)}} members={members} edit={edit} del={del}/>} {page==='submit'&&<SubmitContent/>} {page==='reminder'&&<Reminder openProfile={openProfile} members={members}/>} {page==='notifications'&&<Notifications/>}</ErrorBoundary></main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer><div className="bottom"><button onClick={()=>setPage('home')}><Home/>Home</button><button onClick={()=>setPage('directory')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>setPage('submit')}><Plus/></button><button onClick={()=>setPage('reminder')}><CalendarDays/>Reminder</button><button onClick={()=>setPage('profile')}><UserCircle/>Profile</button></div>{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>}
+function HomePage({members,setPage,openProfile}){return <><section className="hero"><div><p className="eyebrow">Business Excellence Group • Since 2017</p><h1>Connecting entrepreneurs, professionals and industry leaders.</h1><p>AMBI is the members-only digital platform for the Business Excellence Group, built around verified member profiles, business sectors, events, RSVP, announcements and digital visiting cards.</p><div className="heroActions"><button onClick={()=>setPage('directory')}>Explore Directory <ChevronRight/></button><button onClick={()=>setPage('submit')}>Submit Announcement <Plus/></button></div></div><div className="heroCard"><img src="/ambi-logo.png"/><b>{members.length}</b><span>approved BEG members</span></div></section><section className="stats"><div><b>{members.length}</b><span>Approved Members</span></div><div><b>{new Set(members.map(m=>m.category)).size}</b><span>Active Sectors</span></div><div><b>3</b><span>Upcoming Events</span></div><div><b>2017</b><span>BEG Established</span></div></section><section className="panel"><div className="sectionHead"><h2>Featured members</h2><button onClick={()=>setPage('directory')}>View all</button></div><div className="memberGrid">{members.slice(0,4).map(m=><MemberCard key={m.id} m={m} openProfile={openProfile}/>)}</div></section></>}
+
+function AboutPage(){return <><section className="pageHero"><p className="eyebrow">About the Business Excellence Group</p><h1>Built from a collective voice for business progress.</h1><p>The Business Excellence Group was created in 2017 as a common platform for young emerging business establishments, entrepreneurs and professionals to share ideas, strengthen relationships and give meaningful direction toward greater goals.</p></section><section className="stats"><div><b>2017</b><span>Founded</span></div><div><b>BEG</b><span>Registered Society, Manipur</span></div><div><b>15+</b><span>Business Sectors</span></div><div><b>SYNERGY</b><span>Business Summit</span></div></section><section className="panel story"><h2>Our journey</h2><p>In a short span of time, BEG has emerged as a forward-thinking and progressive organisation in the trade and commerce ecosystem. Government departments, institutions, trade bodies and prominent establishments recognise BEG as a growing collective of first-generation business enterprises, entrepreneurs and professionals.</p><p>What started as a rendezvous to share ideas and experiences soon grew into a vibrant network. Members represent diverse sectors including manufacturing, hospitality, healthcare, education, e-commerce, retail, automobiles, real estate, construction, IT, finance, cosmetics, FMCG, food and beverage and more.</p></section><section className="panel story"><h2>Community and economic engagement</h2><p>BEG has supported humanitarian initiatives from flood relief to COVID-19 assistance, including the distribution of food and essential items to children’s homes, de-addiction centres and differently abled centres.</p><p>To strengthen economic relationships, BEG has participated in national and international conclaves. SYNERGY, a business summit with Myanmar business delegates, created an important platform for dialogue between enterprises of Manipur and neighbouring regions.</p></section></>}
+
+function Directory({members,sectors,cat,setCat,query,setQuery,openProfile}){return <><section className="pageHero"><p className="eyebrow">AMBI real member directory</p><h1>Find approved BEG members by business sector.</h1><p>All records in this directory are installed from the approved AMBI/BEG member list. Missing photos or logos can be added later from the member profile editor.</p><div className="search"><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search member name, company, service, sector..."/></div></section><section className="sectors">{sectors.map(s=><button key={s.name} className={cat===s.name?'active':''} onClick={()=>setCat(s.name)}><span className="sectorIcon">{CATEGORY_ICONS[s.name]||'📋'}</span><b>{s.name}</b><span>{s.count} members</span></button>)}</section><section className="memberGrid wide">{members.map(m=><MemberCard key={m.id} m={m} openProfile={openProfile}/>)}</section>{members.length===0&&<div className="empty">No members found. Try another search or category.</div>}</>}
+function MemberCard({m,openProfile}){return <button className="memberCard" onClick={()=>openProfile(m)}><Avatar m={m}/><div><h3>{m.name}</h3><p>{m.company}</p><span>{m.category}</span><small><ShieldCheck/> Verified Member</small></div><ChevronRight/></button>}
+function Profile({member,edit,contacts=[],loggedIn=true,logout,login,activity=[]}){if(!loggedIn){return <section className="pageHero profileLogin"><p className="eyebrow">Member profile</p><h1>You are logged out.</h1><p>Log in to view your name, details, visiting card, contacts, connections and activity history.</p><button onClick={login}><UserCircle/> Log in as member</button></section>}if(!member)return <section className="pageHero"><h1>Profile not found</h1></section>;const history=[...activity,{id:'profile-update',type:'Profile',title:'Digital visiting card ready',status:'Completed',date:'Today',approvedBy:member.approvedBy||'Committee Admin'}];const ads=history.filter(h=>/ad|advertisement|promotion|poster|announcement/i.test(`${h.type} ${h.title}`));return <><section className="profileCover profileCoverClean"><Avatar m={member} big/><div className="profileTitleBlock"><p className="eyebrow">My verified profile</p><h1>{member.name}</h1><p>{member.position||'Member'} • {member.company}</p><p className="profileApproved">Verified by {member.approvedBy||'Committee Admin'}</p></div><button className="logoutBtn" onClick={logout}>Logout</button></section><section className="profileDashboard"><div className="profileMain"><div className="panel profileDetailsCard"><div className="sectionHead"><div><p className="eyebrow">Your details</p><h2>Member information</h2></div><button onClick={()=>edit(member)}><Edit3/> Edit profile</button></div><div className="profileInfoRows"><p><b>Name</b><span>{member.name}</span></p><p><b>Company</b><span>{member.company}</span></p><p><b>Position</b><span>{member.position||'Member'}</span></p><p><b>Category</b><span>{member.category}</span></p><p><b>Email</b><span>{member.email||'Not provided'}</span></p><p><b>Phone</b><span>{member.phone||'Hidden or not provided'}</span></p><p><b>Address</b><span>{member.address||'Not provided'}</span></p></div><h2>About</h2><p>{member.about||'Business profile introduction will appear here.'}</p><h2>Services</h2><div className="chips">{(member.services||member.category||'Member').split(',').map(x=><span key={x}>{x.trim()}</span>)}</div></div><div className="panel"><div className="sectionHead"><div><p className="eyebrow">History</p><h2>Your activity</h2></div><span className="historyCount">{history.length}</span></div><div className="historyList">{history.map(h=><div key={h.id} className="historyItem"><div><b>{h.title}</b><small>{h.type} • {h.date}</small></div><span className={h.status==='Approved'||h.status==='Completed'?'ok':'wait'}>{h.status}</span></div>)}</div></div></div><aside className="profileSide"><div className="vcard profileVcard"><div className="vfront"><Avatar m={member}/><h2>{member.name}</h2><p>{member.company}</p><small>{member.email||'Email not provided'}</small><small>{member.phone||'Phone hidden'}</small></div><div className="vback"><h3>Services</h3><p>{member.services||member.category}</p><button><Share2/> Share digital card</button><button><Download/> Download card</button></div></div><div className="panel profileMiniPanel"><p className="eyebrow">Contacts</p><h2>Who you contacted</h2>{contacts.length?contacts.map(c=><div className="contactRow" key={c.id}><b>{c.name}</b><small>{c.company} • {c.date}</small></div>):<p className="mutedText">No contact history yet. Open a member from Directory to add them here.</p>}</div><div className="panel profileMiniPanel"><p className="eyebrow">Connections & posts</p><h2>Summary</h2><div className="profileStats"><div><b>{contacts.length}</b><span>Contacts</span></div><div><b>{Math.max(contacts.length-1,0)}</b><span>Connections</span></div><div><b>{ads.length}</b><span>Ads / posts</span></div></div></div></aside></section></>}
+
+function Management({form,setForm,saveMember,editing,cancel,members,edit,del}){function up(k,v){setForm({...form,[k]:v})}return <><section className="pageHero"><p className="eyebrow">Management portal</p><h1>{editing?'Edit member profile':'Add new member to directory'}</h1><p>Committee-only area for adding approved members, updating business profiles, and controlling how each member appears in the directory.</p></section><section className="builder"><form onSubmit={e=>{e.preventDefault();saveMember()}}><div className="two"><label>Name<input value={form.name} onChange={e=>up('name',e.target.value)} placeholder="Member real name"/></label><label>Position<input value={form.position} onChange={e=>up('position',e.target.value)} placeholder="Proprietor / Director"/></label></div><label>Company<input value={form.company} onChange={e=>up('company',e.target.value)} placeholder="Company name"/></label><div className="two"><label>Category<select value={form.category} onChange={e=>up('category',e.target.value)}>{SECTORS.filter(x=>x!=='All').map(x=><option key={x}>{x}</option>)}</select></label><label>Email<input value={form.email} onChange={e=>up('email',e.target.value)} placeholder="email@example.com"/></label></div><div className="two"><label>Phone<input value={form.phone} onChange={e=>up('phone',e.target.value)} placeholder="Optional"/></label><label>Address<input value={form.address} onChange={e=>up('address',e.target.value)} placeholder="Imphal, Manipur"/></label></div><label>Services<textarea value={form.services} onChange={e=>up('services',e.target.value)} placeholder="List services separated by commas"/></label><label>About<textarea value={form.about} onChange={e=>up('about',e.target.value)} placeholder="Short company/member introduction"/></label><div className="uploads"><label><Upload/> Upload personal photo<input type="file" accept="image/*" onChange={e=>readFile(e.target.files[0],v=>up('photo',v))}/>{form.photo&&<span>Photo uploaded</span>}</label><label><ImageIcon/> Upload company logo<input type="file" accept="image/*" onChange={e=>readFile(e.target.files[0],v=>up('logo',v))}/>{form.logo&&<span>Logo uploaded</span>}</label></div><fieldset><legend>Directory display preference</legend>{['photo','logo','initials'].map(x=><label key={x} className="radio"><input type="radio" checked={form.display===x} onChange={()=>up('display',x)}/>{x==='photo'?'Show personal photo':x==='logo'?'Show company logo':'Show initials only'}</label>)}</fieldset><div className="actions"><button type="submit"><Save/> {editing?'Update member':'Save member'}</button>{editing&&<button type="button" onClick={cancel}>Cancel edit</button>}</div></form><aside className="preview"><h2>Directory preview</h2><MemberCard m={{...form,name:form.name||'Member Name',company:form.company||'Company Name'}} openProfile={()=>{}}/><div className="vfront"><Avatar m={{...form,name:form.name||'Member Name',company:form.company||'Company Name'}}/><h2>{form.name||'Member Name'}</h2><p>{form.company||'Company Name'}</p><small>{form.email||'email@example.com'}</small></div></aside></section><section className="panel"><div className="sectionHead"><h2>Existing members</h2><span>{members.length} records</span></div><div className="tableList">{members.map(m=><div key={m.id}><Avatar m={m}/><b>{m.name}</b><span>{m.company}</span><button onClick={()=>edit(m)}><Edit3/></button><button onClick={()=>del(m.id)}><Trash2/></button></div>)}</div></section></>}
+
+function Reminder({members,openProfile}){
+  const [view,setView]=useState('month');
+  const [sound,setSound]=useState(true);
+  const [showCreate,setShowCreate]=useState(false);
+  const [selectedEvent,setSelectedEvent]=useState(events[0]);
+  const [draft,setDraft]=useState({title:'',day:24,time:'4:00 PM',location:'BEG Office',createdBy:'Verified Member'});
+  const days=Array.from({length:35},(_,i)=>i+1);
+  const eventByDay=(day)=>events.filter(ev=>ev.day===day);
+  const findMember=(name)=>members.find(m=>m.name===name);
+  const attendeeNames=[...selectedEvent.attending,...selectedEvent.maybe,...selectedEvent.not];
+  const attendeeMembers=attendeeNames.map(findMember).filter(Boolean);
+  const companies=[...new Set(attendeeMembers.map(m=>m.company))];
+  const total=selectedEvent.attending.length+selectedEvent.maybe.length+selectedEvent.not.length;
+  function triggerSound(){if(!sound)return;try{new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{})}catch{}}
+  function doRsvp(status){triggerSound();}
   return <>
-    <section className="homeHeroV10">
-      <div className="homeHeroCopy">
-        <p className="eyebrow">Business Excellence Group · AMBI</p>
-        <h1>One trusted app for members, events, announcements and business connections.</h1>
-        <p>AMBI brings verified member profiles, RSVP events, approved posts, digital visiting cards and e-PDF articles into one clean, mobile-ready platform.</p>
-        <div className="heroActions">
-          <button className="primary" onClick={()=>navigate('Directory')}><Search/>Explore Directory</button>
-          <button className="secondary" onClick={()=>navigate('Reminder')}><CalendarDays/>View Events</button>
-          <button className="secondary" onClick={()=>navigate('Submit')}><Plus/>Submit Update</button>
-        </div>
+    <section className="pageHero reminderHero"><p className="eyebrow">Reminder Calendar</p><h1>Plan events, RSVP and see who is attending.</h1><p>A Google Calendar-style member reminder system for BEG events, networking programs, announcements and meetings.</p><div className="heroActions"><button onClick={()=>setShowCreate(true)}><Plus/>Create Event</button><button onClick={()=>setSound(!sound)}><Bell/>{sound?'Sound On':'Sound Off'}</button></div></section>
+    <section className="calendarAppV16">
+      <aside className="calendarRailV16">
+        <div className="miniYearV16"><button>‹</button><b>2026</b><button>›</button></div>
+        {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m,i)=><button key={m} className={m==='June'?'active':''}><span>{m}</span><b>{i===5?events.length:Math.max(1,(i*3)%7)}</b></button>)}
+      </aside>
+      <div className="calendarMainV16">
+        <div className="calendarHeaderV16"><div><p className="eyebrow">June 2026</p><h2>Member Calendar</h2></div><div className="viewToggleV16"><button className={view==='month'?'active':''} onClick={()=>setView('month')}>Month</button><button className={view==='list'?'active':''} onClick={()=>setView('list')}>List</button></div></div>
+        {view==='month'?<><div className="weekdaysV16">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><b key={d}>{d}</b>)}</div><div className="monthGridV16">{days.map(day=>{const evs=eventByDay(day);return <button key={day} className={`${evs.length?'hasEvent':''} ${selectedEvent.day===day?'selected':''}`} onClick={()=>evs[0]&&setSelectedEvent(evs[0])}><span className="dayNumV16">{day}</span>{evs.map(ev=><small key={ev.id}>{ev.title}</small>)}</button>})}</div></>:<div className="eventListFullV16">{events.map(ev=><button key={ev.id} className={selectedEvent.id===ev.id?'active':''} onClick={()=>setSelectedEvent(ev)}><b>{ev.day}</b><div><strong>{ev.title}</strong><small>{ev.time} · {ev.location}</small></div><span>{ev.attending.length} attending</span></button>)}</div>}
       </div>
-      <div className="heroPhoneMock">
-        <div className="phoneTop"><span></span><img className="phoneLogo" src="/ambi-logo.png" alt="AMBI"/><Bell size={16}/></div>
-        <div className="phoneCard active"><small>Next Event</small><b>{upcoming[0]?.title}</b><span>{upcoming[0]?.attending.length} attending · RSVP open</span></div>
-        <div className="phoneCard"><small>Latest Approved</small><b>{approved[0]?.title || 'Member announcement'}</b><span>Approved by {approved[0]?.approvedBy || 'Admin'}</span></div>
-        <div className="phoneGridMini">{featured.slice(0,4).map(m=><div key={m.id}>{m.initials}</div>)}</div>
-      </div>
-    </section>
-
-    <section className="homeStatsV10">
-      <Stat n="2017" l="BEG Founded"/>
-      <Stat n={members.length + '+'} l="Verified Directory Profiles"/>
-      <Stat n={sectors.length-1} l="Business Sectors"/>
-      <Stat n="1 Admin" l="Can Verify & Approve"/>
-    </section>
-
-    <section className="homeGridV10">
-      <div className="homeMainColumn">
-        <div className="panel homePanelV10">
-          <div className="sectionHead"><div><p className="eyebrow">Approved feed</p><h2>Latest announcements, ads & offers</h2></div><button className="ghost" onClick={()=>navigate('Submit')}>Submit <ChevronRight size={16}/></button></div>
-          <div className="contentFeed compact">{approved.map(c=><article className="contentCard public spotlightPost" key={c.id}>{c.asset&&<div className="miniAsset"><Paperclip size={15}/>{c.asset.name}</div>}<span className="typePill">{c.type}</span><h3>{c.title}</h3><p>{c.summary}</p><div className="approvalMeta"><BadgeCheck size={15}/> Approved by {c.approvedBy} · {c.approvedAt}</div><small>Submitted by {c.submittedBy} · {c.company}</small></article>)}</div>
-        </div>
-
-        <div className="panel homePanelV10">
-          <div className="sectionHead"><div><p className="eyebrow">Business sectors</p><h2>Search by what people need</h2></div><button className="ghost" onClick={()=>navigate('Directory')}>All sectors <ChevronRight size={16}/></button></div>
-          <div className="sectorStripV10">{topSectors.map(s=><button key={s.id} onClick={()=>navigate('Directory')}><span>{s.icon}</span><b>{s.label}</b><small>{s.count} members</small></button>)}</div>
-        </div>
-      </div>
-
-      <aside className="homeSideColumn">
-        <div className="sideWidgetV10">
-          <div className="sectionHead"><div><p className="eyebrow">Upcoming</p><h2>Events</h2></div><CalendarDays className="mutedIcon"/></div>
-          {upcoming.map(ev=><button className="eventMiniV10" key={ev.id} onClick={()=>navigate('Reminder')}><b>{ev.day}</b><div><strong>{ev.title}</strong><small>{ev.time} · {ev.location}</small><span>{ev.attending.length} attending</span></div></button>)}
-        </div>
-
-        <div className="sideWidgetV10">
-          <div className="sectionHead"><div><p className="eyebrow">Featured</p><h2>Members</h2></div><Users className="mutedIcon"/></div>
-          {featured.map(m=><button className="memberMiniV10" key={m.id} onClick={()=>navigate('Directory')}><div className="logoMonogram mini">{m.initials}</div><div><b>{m.name}</b><small>{m.company}</small></div><ChevronRight size={15}/></button>)}
-        </div>
+      <aside className="eventDeskV16">
+        <div className="eventBadgeV16"><CalendarDays/><span>Selected Event</span></div>
+        <h2>{selectedEvent.title}</h2>
+        <p>{selectedEvent.time} · {selectedEvent.location}</p>
+        <small>Created by {selectedEvent.createdBy} · Approved by {selectedEvent.approvedBy}</small>
+        <div className="rsvpStatsV16"><div><b>{selectedEvent.attending.length}</b><span>Attending</span></div><div><b>{selectedEvent.maybe.length}</b><span>Maybe</span></div><div><b>{selectedEvent.not.length}</b><span>Not</span></div></div>
+        <div className="rsvpButtonsV16"><button onClick={()=>doRsvp('attending')}>Attending</button><button onClick={()=>doRsvp('maybe')}>Maybe</button><button onClick={()=>doRsvp('not')}>Not Attending</button></div>
+        <div className="attendeeTabsV16"><h3>Attendee Directory</h3><AttendeeGroup title="Attending" names={selectedEvent.attending} members={members} openProfile={openProfile}/><AttendeeGroup title="Maybe" names={selectedEvent.maybe} members={members} openProfile={openProfile}/><AttendeeGroup title="Not Attending" names={selectedEvent.not} members={members} openProfile={openProfile}/></div>
+        <div className="companiesV16"><h3>Attending Companies</h3>{companies.length?companies.map(c=><span key={c}>{c}</span>):<small>No company list yet.</small>}</div>
       </aside>
     </section>
-
-    <section className="panel approvalPreviewV10">
-      <div className="sectionHead"><div><p className="eyebrow">Private review area</p><h2>Pending approvals are not public until verified</h2></div><button className="ghost" onClick={()=>navigate('Management')}>Open Management <ChevronRight size={16}/></button></div>
-      <div className="cards">{pendingMembers.slice(0,2).map(p=><div className="card" key={p.id}><UserRound className="mutedIcon"/><h3>{p.name}</h3><p>{p.company}</p><span className={`status ${p.status.toLowerCase()}`}>{p.status}</span></div>)}{pending.map(c=><div className="card" key={c.id}><FileText className="mutedIcon"/><h3>{c.title}</h3><p>{c.type}</p><span className="status pending">Pending Review</span></div>)}</div>
-    </section>
-  </> 
+    <section className="panel eventNetworkPanelV16"><div className="sectionHead"><div><p className="eyebrow">Event Network</p><h2>{total} member responses connected to verified profiles</h2></div><button><Share2/>Share Event</button></div><div className="eventMemberStripV16">{attendeeMembers.map(m=><button key={m.id} onClick={()=>openProfile(m)}><Avatar m={m}/><b>{m.name}</b><small>{m.company}</small></button>)}</div></section>
+    {showCreate&&<div className="modalOverlayV16" onClick={()=>setShowCreate(false)}><div className="createEventModalV16" onClick={e=>e.stopPropagation()}><div className="sectionHead"><div><p className="eyebrow">Create Event</p><h2>New Reminder Event</h2></div><button onClick={()=>setShowCreate(false)}>Close</button></div><div className="two"><label>Event Title<input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} placeholder="Example: Business Networking Evening"/></label><label>Day<select value={draft.day} onChange={e=>setDraft({...draft,day:e.target.value})}>{days.slice(1,31).map(d=><option value={d} key={d}>{d}</option>)}</select></label></div><div className="two"><label>Time<input value={draft.time} onChange={e=>setDraft({...draft,time:e.target.value})}/></label><label>Location<input value={draft.location} onChange={e=>setDraft({...draft,location:e.target.value})}/></label></div><label>Created by<input value={draft.createdBy} onChange={e=>setDraft({...draft,createdBy:e.target.value})}/></label><div className="successMsg"><ShieldCheck/> New events stay pending until approved by a committee admin.</div><button onClick={()=>setShowCreate(false)}><CheckCircle2/>Save Event</button></div></div>}
+  </>
 }
-function Stat({n,l}) {return <div className="stat"><strong>{n}</strong><span>{l}</span></div>}
-function AboutPage(){return <><Hero eyebrow="About BEG" title="Business Excellence Group" desc="Created in 2017 as a collective platform for emerging business establishments, entrepreneurs and professionals across Manipur and beyond."/><section className="panel story"><h2>Built for collaboration, impact and enterprise.</h2><p>BEG brings together first-generation business owners and professionals from manufacturing, hospitality, healthcare, education, e-commerce, retail, automobiles, real estate, construction, IT, finance, FMCG, food and beverage and more.</p><div className="timeline"><b>2017</b><span>BEG Founded</span><b>2020</b><span>COVID humanitarian support</span><b>2026</b><span>AMBI digital member platform</span></div></section><section className="sectorGrid">{sectors.slice(1).map(s=><div className="sectorCard" key={s.id}><span>{s.icon}</span><b>{s.label}</b><small>{s.count} members</small></div>)}</section></>}
-function DirectoryPage({sector,setSector,query,setQuery,filteredMembers,setSelectedMember}){return <><Hero eyebrow="Business Directory" title="Find members by sector, name or service." desc="A premium directory with verified business profiles and digital visiting cards."><div className="searchWrap"><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search businesses, services, members..."/></div></Hero><section className="sectorGrid">{sectors.map(s=><button className={`sectorCard ${sector===s.id?'selected':''}`} onClick={()=>setSector(s.id)} key={s.id}><span>{s.icon}</span><b>{s.label}</b><small>{s.count} members</small></button>)}</section><section className="memberGrid">{filteredMembers.map(m=><button className="memberCard" onClick={()=>setSelectedMember(m)} key={m.id}><div className="logoMonogram">{m.initials}</div><h3>{m.name}</h3><p>{m.company}</p><span>{sectors.find(s=>s.id===m.sector)?.label}</span><small><BadgeCheck size={14}/> Verified by {m.verifiedBy}</small></button>)}</section></>}
-function ProfilePage({member}){return <><section className="profileHero"><div className="cover"><div className="bigLogo">{member.initials}</div></div><div className="profileInfo"><div><p className="eyebrow">Verified Member Profile</p><h1>{member.name}</h1><p>{member.title} · {member.company}</p><span className="verified"><BadgeCheck/> Verified by {member.verifiedBy}</span></div><div className="shareRow"><button><Share2/>Share</button><button><Download/>Card</button></div></div></section><section className="profileGrid"><div className="panel"><h2>About</h2><p>{member.about}</p><h3>Services</h3><div className="chips">{member.services.map(s=><span key={s}>{s}</span>)}</div></div><div className="vcard"><div className="vfront"><div className="logoMonogram">{member.initials}</div><h2>{member.name}</h2><p>{member.company}</p><small>{member.email}</small><small>{member.phone}</small></div><div className="vback"><b>Services</b>{member.services.map(s=><span key={s}>{s}</span>)}<small>Digital visiting card · AMBI</small></div></div></section></>}
-function ReminderPage({events,selectedEvent,setSelectedEvent,rsvp,members,setSelectedMember}){
-  const days=Array.from({length:35},(_,i)=>i+1);
-  const allAttendees=[...selectedEvent.attending,...selectedEvent.maybe,...selectedEvent.not];
-  const findMember=(name)=>members.find(m=>m.name===name || name.includes(m.name.split(' ')[0]) || m.name.includes(name.split(' ')[0]));
-  const attendingCompanies=selectedEvent.attending.map(n=>findMember(n)?.company).filter(Boolean);
-  return <><Hero eyebrow="Event Registration" title="RSVP, see attendees and network before the event." desc="A modern calendar with member-only event registration, visible attendee directory and company participation preview.">
-    <div className="eventHeroStats">
-      <div><strong>{selectedEvent.attending.length}</strong><span>Attending</span></div>
-      <div><strong>{selectedEvent.maybe.length}</strong><span>Maybe</span></div>
-      <div><strong>{selectedEvent.not.length}</strong><span>Not attending</span></div>
-    </div>
-  </Hero>
-  <section className="calendarLayout">
-    <div className="calendarPanel">
-      <div className="calendarTop"><div><p className="eyebrow">June 2026</p><h2>Business Events Calendar</h2></div><button className="primary"><Plus/>Create Event</button></div>
-      <div className="weekdays">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><b key={d}>{d}</b>)}</div>
-      <div className="monthGrid">{days.map(d=>{const ev=events.find(e=>e.day===d);return <button key={d} className={ev?'hasEvent':''} onClick={()=>ev&&setSelectedEvent(ev)}><span>{d}</span>{ev&&<small>{ev.title}</small>}{ev&&<em>{ev.attending.length} going</em>}</button>})}</div>
-    </div>
-    <aside className="eventSide">
-      <div className="sectionHead"><div><p className="eyebrow">Upcoming</p><h2>Event List</h2></div><Bell className="mutedIcon"/></div>
-      {events.map(ev=><button className={selectedEvent.id===ev.id?'eventItem active':'eventItem'} onClick={()=>setSelectedEvent(ev)} key={ev.id}><b>{ev.title}</b><small>{ev.time} · {ev.location}</small><span>{ev.attending.length} attending · {ev.maybe.length} maybe</span></button>)}
-      <div className="selectedEvent">
-        <p className="eyebrow">Selected Event</p><h3>{selectedEvent.title}</h3>
-        <p>{selectedEvent.time} · {selectedEvent.location}</p>
-        <small>Created by {selectedEvent.createdBy}</small><small>Approved by {selectedEvent.approvedBy}</small>
-        <div className="rsvpBtns"><button onClick={()=>rsvp('attending')}>Attending</button><button onClick={()=>rsvp('maybe')}>Maybe</button><button onClick={()=>rsvp('not')}>Not Attending</button></div>
-      </div>
-    </aside>
-  </section>
+function AttendeeGroup({title,names,members,openProfile}){return <div className="attendeeGroupV16"><div className="attendeeGroupHeadV16"><b>{title}</b><span>{names.length}</span></div>{names.length?names.map(name=>{const m=members.find(x=>x.name===name);return <button key={name} onClick={()=>m&&openProfile(m)}>{m?<Avatar m={m}/>:<div className="avatarMono mini">{name.slice(0,2).toUpperCase()}</div>}<div><strong>{name}</strong><small>{m?.company||'Verified Member'}</small></div><ChevronRight size={15}/></button>}):<small className="emptyMiniV16">No responses yet.</small>}</div>}
 
-  <section className="eventDetailPanel">
-    <div className="eventBanner">
-      <div><p className="eyebrow">Networking View</p><h2>{selectedEvent.title}</h2><p>Members can see who is coming, discover companies attending and open each member profile before the event.</p></div>
-      <div className="eventBadge"><CalendarDays/><b>{selectedEvent.day}</b><span>June</span></div>
-    </div>
-    <div className="eventStatsGrid">
-      <div><strong>{selectedEvent.attending.length}</strong><span>Confirmed Members</span></div>
-      <div><strong>{selectedEvent.maybe.length}</strong><span>Maybe / Tentative</span></div>
-      <div><strong>{allAttendees.length}</strong><span>Total Responses</span></div>
-      <div><strong>{new Set(attendingCompanies).size}</strong><span>Companies Attending</span></div>
-    </div>
-    <div className="companyStrip">
-      <h3>Attending Companies</h3>
-      <div className="chips">{attendingCompanies.length ? attendingCompanies.map(c=><span key={c}>{c}</span>) : <span>No companies confirmed yet</span>}</div>
-    </div>
-    <div className="attendeeColumns">
-      <AttendeeGroup title="Attending" list={selectedEvent.attending} members={members} findMember={findMember} setSelectedMember={setSelectedMember}/>
-      <AttendeeGroup title="Maybe" list={selectedEvent.maybe} members={members} findMember={findMember} setSelectedMember={setSelectedMember}/>
-      <AttendeeGroup title="Not Attending" list={selectedEvent.not} members={members} findMember={findMember} setSelectedMember={setSelectedMember}/>
-    </div>
-  </section></>}
-function AttendeeGroup({title,list,findMember,setSelectedMember}){return <div className="attendeeGroup"><h3>{title} <span>{list.length}</span></h3>{list.length?list.map(name=>{const m=findMember(name);return <button className="attendeeCard" key={name} onClick={()=>m&&setSelectedMember(m)}><div className="logoMonogram mini">{m?.initials || name.split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><b>{name}</b><small>{m?.company || 'Verified AMBI Member'}</small></div><ChevronRight size={16}/></button>}):<p className="emptyState">No members in this list yet.</p>}</div>}
-function RsvpList({title,list}){return <div className="rsvpList"><b>{title} ({list.length})</b><p>{list.length?list.join(', '):'No members yet'}</p></div>}
-function SignupPage({submitMemberSignup,members}){
-  const [form,setForm]=useState({name:'',email:'',phone:'',company:''});
-  const [live,setLive]=useState([]);
-  const update=(key,value)=>{
-    const next={...form,[key]:value};
-    setForm(next);
-    const text=`${next.name} ${next.email} ${next.company}`.toLowerCase();
-    const matches=members.filter(m=>{
-      const hay=`${m.name} ${m.company} ${m.email} ${m.services.join(' ')}`.toLowerCase();
-      return text.trim().length>3 && text.split(' ').some(x=>x.length>3 && hay.includes(x));
-    }).slice(0,3);
-    setLive(matches);
-  };
-  const submit=(e)=>{e.preventDefault();submitMemberSignup(form)};
-  return <><Hero eyebrow="Member Access" title="Signup with your real BEG member name." desc="Your Name + Email are used to find the correct Directory profile. Phone is optional. An admin verifies the match before your account becomes active."/>
-    <section className="formPanel">
-      <form onSubmit={submit}>
-        <label>Real Name *<input required value={form.name} onChange={e=>update('name',e.target.value)} placeholder="Same name as BEG directory"/></label>
-        <label>Email *<input required type="email" value={form.email} onChange={e=>update('email',e.target.value)} placeholder="name@email.com"/></label>
-        <label>Phone optional<input value={form.phone} onChange={e=>update('phone',e.target.value)} placeholder="Optional"/></label>
-        <label>Company / Business Name<input value={form.company} onChange={e=>update('company',e.target.value)} placeholder="Example: Aadarsh Medicare"/></label>
-        <button className="primary"><ShieldCheck/>Submit for admin verification</button>
-      </form>
-      <div className="panel matchPanel">
-        <h2>Directory profile matching</h2>
-        <p>The system suggests possible matches, but an admin makes the final link. This avoids wrong accounts using another member profile.</p>
-        {live.length>0 ? <div className="matchList">{live.map(m=><div className="matchCard" key={m.id}><div className="logoMonogram mini">{m.initials}</div><div><b>{m.name}</b><span>{m.company}</span><small>{sectors.find(s=>s.id===m.sector)?.label}</small></div></div>)}</div> : <div className="emptyState">Start typing your name, email, or company to preview possible Directory matches.</div>}
-        <div className="verifiedBox"><BadgeCheck/> After approval, posts, event creation, RSVP and comments will show your verified real name.</div>
-      </div>
-    </section></>}
-
-function ManagementPage({pendingMembers,members,contents,approveMember,rejectMember,approveContent,rejectContent,setSelectedMember}){
-  const [chosen,setChosen]=useState({});
-  const getOptions=(p)=>{
-    const candidateIds=p.candidateIds?.length ? p.candidateIds : (p.linkedProfileId ? [p.linkedProfileId] : []);
-    const first=candidateIds.map(id=>members.find(m=>m.id===id)).filter(Boolean);
-    const rest=members.filter(m=>!candidateIds.includes(m.id));
-    return [...first,...rest];
-  };
-  const pendingContent = contents.filter(c=>c.status==='Pending');
-  const reviewedContent = contents.filter(c=>c.status!=='Pending');
-  return <><Hero eyebrow="Management Portal" title="Approve members, posts and business content." desc="Any one of the four admins can approve. Approved content becomes public and carries the approving admin name and date."/>
-    <section className="panel workflowPanel"><div className="workflowStep"><b>1</b><span>Member submits</span></div><ChevronRight/><div className="workflowStep"><b>2</b><span>Admin verifies</span></div><ChevronRight/><div className="workflowStep"><b>3</b><span>Approved item goes public</span></div></section>
-    <section className="panel"><div className="sectionHead"><div><p className="eyebrow">Content approval</p><h2>Pending posts, ads and announcements</h2></div><span className="status pending">{pendingContent.length} pending</span></div><div className="approvalContentGrid">{pendingContent.map(c=><div className="approvalContentCard" key={c.id}><div className="approvalTop"><div className="avatar"><FileText/></div><div><h3>{c.title}</h3><p>{c.type} · {c.visibility}</p></div><span className="status pending">Pending</span></div><p>{c.summary}</p><small>Submitted by {c.submittedBy} · {c.company} · {c.submittedAt}</small><div className="adminActions">{admins.map(a=><button key={a} onClick={()=>approveContent(c.id,a)}><CheckCircle2/>Approve as {a.replace('Admin ','')}</button>)}<button className="reject" onClick={()=>rejectContent(c.id,admins[0])}><XCircle/>Reject</button></div></div>)}</div>{!pendingContent.length && <p className="emptyState">No pending content submissions.</p>}</section>
-    <section className="adminGrid">{pendingMembers.map(p=>{
-      const options=getOptions(p); const selected=chosen[p.id] ?? p.linkedProfileId ?? options[0]?.id ?? '';
-      const linked=members.find(m=>m.id===selected);
-      return <div className="approvalCard" key={p.id}>
-        <div className="approvalTop"><div className="avatar"><UserRound/></div><div><h3>{p.name}</h3><p>{p.company}</p></div><span className={`status ${p.status.toLowerCase()}`}>{p.status}</span></div>
-        <p><Mail size={15}/>{p.email}</p><p><Phone size={15}/>{p.phone}</p><p><Building2 size={15}/>{p.match}</p>
-        <div className="linkBox"><label>Link to Directory Profile<select disabled={p.status!=='Pending'} value={selected} onChange={e=>setChosen({...chosen,[p.id]:e.target.value})}>{options.map(m=><option value={m.id} key={m.id}>{m.name} — {m.company}</option>)}</select></label>{linked&&<button className="ghost previewBtn" onClick={()=>setSelectedMember(linked)}><BriefcaseBusiness size={16}/> Preview linked profile</button>}</div>
-        {p.verifiedBy&&<div className="verifiedBox"><BadgeCheck/> {p.status} by {p.verifiedBy}<br/><small>{p.verifiedOn}</small><br/><small>Linked: {p.linkedProfileName}</small></div>}
-        {p.status==='Pending'&&<div className="adminActions"><div className="adminHint">Approve means: real name verified + account linked to selected Directory profile.</div>{admins.map(a=><button key={a} onClick={()=>approveMember(p.id,a,selected)}><CheckCircle2/>Approve & Link as {a.replace('Admin ','')}</button>)}<button className="reject" onClick={()=>rejectMember(p.id,admins[0])}><XCircle/>Reject</button></div>}
-      </div>})}</section>
-      <section className="panel"><div className="sectionHead"><div><p className="eyebrow">Reviewed archive</p><h2>Approved / rejected content</h2></div></div><div className="contentFeed compact">{reviewedContent.map(c=><article className={`contentCard ${c.status.toLowerCase()}`} key={c.id}><span className="typePill">{c.type}</span><h3>{c.title}</h3><p>{c.summary}</p><div className="approvalMeta"><BadgeCheck size={15}/> {c.status} by {c.approvedBy} · {c.approvedAt}</div></article>)}</div></section>
-      </>}
-
-function SubmitPage({currentUser,submitContent}){
-  const [form,setForm]=useState({type:'Announcement',title:'',summary:'',body:'',asset:null});
-  const memberName=currentUser?.name || 'Verified Member Demo';
-  const handleAsset=(e)=>{
-    const file=e.target.files?.[0];
-    if(!file) return;
-    const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
-    if(!allowed.includes(file.type)){
-      alert('Please upload JPG, PNG, WEBP or PDF only.');
-      e.target.value='';
-      return;
-    }
-    if(file.size > 8 * 1024 * 1024){
-      alert('Please keep files under 8MB for the first version.');
-      e.target.value='';
-      return;
-    }
-    const asset={name:file.name,type:file.type,size:`${(file.size/1024/1024).toFixed(2)} MB`,preview:file.type.startsWith('image/') ? URL.createObjectURL(file) : ''};
-    setForm(prev=>({...prev,asset}));
-  };
-  const clearAsset=()=>setForm(prev=>({...prev,asset:null}));
-  const submit=(e)=>{e.preventDefault();submitContent(form);setForm({type:'Announcement',title:'',summary:'',body:'',asset:null})};
-  return <><Hero eyebrow="Member Submission" title="Submit announcements, ads, offers and opportunities." desc="Submitted content stays private until one approved admin reviews it. Once approved, the approving admin is shown on the public card."/>
-    <section className="formPanel submitLayout"><form onSubmit={submit}>
-      <label>Content Type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}><option>Announcement</option><option>Advertisement</option><option>Business Offer</option><option>News Update</option><option>Event Notice</option><option>Opportunity</option></select></label>
-      <label>Title *<input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="Example: Member offer for June"/></label>
-      <label>Short Summary *<textarea required value={form.summary} onChange={e=>setForm({...form,summary:e.target.value})} placeholder="This appears on the public card after approval."/></label>
-      <div className="uploadBlock">
-        <div className="uploadHead"><div><p className="eyebrow">Optional visual</p><h3>Upload Poster, Banner, Photo or PDF</h3><small>Place your design, flyer, product photo, ad banner or PDF here for admin review.</small></div><UploadCloud/></div>
-        <label className="dropZone"><input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={handleAsset}/><span><UploadCloud/> Choose JPG, PNG, WEBP or PDF</span><small>Recommended after the short summary so admins can review the visual quickly.</small></label>
-        {form.asset && <div className="assetPreview">{form.asset.preview ? <img src={form.asset.preview} alt="Uploaded preview"/> : <div className="pdfPreview"><FileText/>PDF</div>}<div><b>{form.asset.name}</b><small>{form.asset.type} · {form.asset.size}</small></div><button type="button" onClick={clearAsset}><Trash2/>Remove</button></div>}
-      </div>
-      <label>Full Details<textarea value={form.body} onChange={e=>setForm({...form,body:e.target.value})} placeholder="More details for the admin and final article page."/></label>
-      <button className="primary"><Plus/>Submit for approval</button>
-    </form>
-    <aside className="panel"><p className="eyebrow">Submission Rules</p><h2>Verified name attached</h2><p>Your content will be submitted as <b>{memberName}</b>. Phone number is not required. Admin approval controls whether the item appears publicly.</p><div className="verifiedBox"><ShieldCheck/> Pending items are private. Uploaded images/PDFs stay for admin review until approved.</div><div className="contentPreview"><span className="typePill">{form.type}</span><h3>{form.title || 'Your title preview'}</h3><p>{form.summary || 'Your short summary preview will appear here.'}</p>{form.asset && <div className="miniAsset">{form.asset.preview ? <ImageIcon/> : <Paperclip/>}{form.asset.name}</div>}<small>Submitted by {memberName}</small></div></aside></section></>}
-
-function PdfPage({contents}){
-  const approved=contents.filter(c=>c.status==='Approved');
-  return <><Hero eyebrow="e-PDF Library" title="Approved articles ready to share or download." desc="Only approved member content appears here. Each article keeps its verification details for trust and accountability."/>
-  <section className="contentFeed pdfGrid">{approved.map(c=><article className="contentCard pdfCard" key={c.id}><span className="typePill">{c.type}</span><h3>{c.title}</h3><p>{c.summary}</p><div className="approvalMeta"><BadgeCheck size={15}/> Approved by {c.approvedBy}</div><button className="primary"><Download/>Download PDF</button><button className="secondary"><Share2/>Share</button></article>)}</section></>}
-
-function ContactPage(){return <><Hero eyebrow="Contact" title="Connect with AMBI / BEG." desc="For member access, directory correction, business collaboration and event support."/><section className="cards"><div className="card"><Mail/><h3>Email</h3><p>info@ambi-beg.org</p></div><div className="card"><Phone/><h3>Phone</h3><p>Optional member contact</p></div><div className="card"><BriefcaseBusiness/><h3>Office</h3><p>Imphal, Manipur</p></div></section></>}
-
+function SubmitContent(){const [asset,setAsset]=useState(null);const [kind,setKind]=useState('Advertisement');const [title,setTitle]=useState('');const [summary,setSummary]=useState('');const [details,setDetails]=useState('');const [msg,setMsg]=useState('');function fileUp(file){if(!file)return;readFile(file,v=>setAsset({name:file.name,type:file.type,src:v}))}function submit(e){e.preventDefault();if(!title||!summary){setMsg('Please add a title and short summary before submitting.');return}setMsg('Submitted for committee approval. Approved items will show with the approving admin name.')}return <><section className="pageHero"><p className="eyebrow">Member submission</p><h1>Submit an announcement, report or advertisement.</h1><p>Use this form for member promotions, notices, event reports, offers or public announcements. Submissions stay pending until approved by a committee admin.</p></section><section className="builder submitClean"><form onSubmit={submit}><label>Submission type<select value={kind} onChange={e=>setKind(e.target.value)}><option>Advertisement</option><option>Announcement</option><option>Event Notice</option><option>Business Offer</option><option>Report</option></select></label><label>Title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Example: Business networking dinner"/></label><label>Short summary<textarea value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Write a short summary for admin review and public preview."/></label><label className="submitUpload"><Upload/> Upload poster, banner, photo or PDF<input type="file" accept="image/*,.pdf" onChange={e=>fileUp(e.target.files[0])}/>{asset&&<span>{asset.name}</span>}</label><label>Full details<textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="Add full details, date, location, contact or supporting information."/></label><button type="submit"><Save/> Submit for Approval</button>{msg&&<div className="successMsg">{msg}</div>}</form><aside className="preview"><h2>Submission preview</h2><div className="contentPreviewCard"><span>{kind}</span><h3>{title||'Submission title'}</h3><p>{summary||'Short summary will appear here.'}</p>{asset&&asset.type.startsWith('image/')?<img src={asset.src}/>:asset&&<b>PDF attached: {asset.name}</b>}<small>Status: Pending approval</small></div></aside></section></>}
+function Notifications(){return <><section className="pageHero"><p className="eyebrow">Notifications</p><h1>Member alerts and reminders</h1></section><section className="panel">{notifications.map(n=><div className="notice" key={n.t}><Bell/><div><h3>{n.t}</h3><p>{n.d}</p></div></div>)}</section></>}
 createRoot(document.getElementById('root')).render(<App/>);
