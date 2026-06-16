@@ -1412,8 +1412,8 @@ const seedCalendarEvents=[
  {id:'hol-nov08',title:'Diwali / Deepavali',date:'2026-11-08',time:'All day',location:'India',createdBy:'Indian Holiday Calendar',type:'Festival',source:'Indian festival calendar',attending:[],maybe:[],not:[],blocked:false},
  {id:'hol-nov10',title:'Ningol Chakouba',date:'2026-11-10',time:'All day',location:'Manipur',createdBy:'Manipuri Cultural Calendar',type:'Manipuri Festival',source:'Meitei lunar festival, verify with local 2026 notification',attending:[],maybe:[],not:[],blocked:false},
  {id:'hol-dec25',title:'Christmas Day',date:'2026-12-25',time:'All day',location:'India',createdBy:'Indian Holiday Calendar',type:'National/Religious Holiday',source:'Indian holiday calendar',attending:[],maybe:[],not:[],blocked:false},
- {id:'beg-jun24',title:'BEG Business Networking Evening',date:'2026-06-24',time:'4:00 PM',location:'BEG Office',createdBy:'AMBI Members',type:'Member Event',source:'AMBI event',attending:['Aadarsh Sharma','Anand Sapam'],maybe:['Robin Seram'],not:[],blocked:false},
- {id:'beg-jun28',title:'Member Directory Review Meet',date:'2026-06-28',time:'11:00 AM',location:'Imphal',createdBy:'AMBI Members',type:'Member Event',source:'AMBI event',attending:['A. Hemanta Sharma'],maybe:[],not:[],blocked:false}
+ {id:'beg-jun24',title:'BEG Business Networking Evening',date:'2026-06-24',time:'4:00 PM',location:'BEG Office',createdBy:'AMBI Members',type:'Member Event',source:'AMBI event',attending:[],maybe:[],not:[],blocked:false},
+ {id:'beg-jun28',title:'Member Directory Review Meet',date:'2026-06-28',time:'11:00 AM',location:'Imphal',createdBy:'AMBI Members',type:'Member Event',source:'AMBI event',attending:[],maybe:[],not:[],blocked:false}
 ];
 
 const notificationSeed=[
@@ -1446,7 +1446,166 @@ function toAppMember(row){
   };
 }
 
-function App(){const [page,setPageRaw]=useState('home');const [drawer,setDrawer]=useState(false);const [members,setMembers]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiMembersRealV2'))||seedMembers}catch{return seedMembers}});const [query,setQuery]=useState('');const [cat,setCat]=useState('All');const [selected,setSelected]=useState(seedMembers[0]);const [form,setForm]=useState(blank);const [editing,setEditing]=useState(null);const [toast,setToast]=useState('');const [loggedIn,setLoggedIn]=useState(()=>localStorage.getItem('ambiLoggedIn')!=='false');const [contacts,setContacts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiContactsV18'))||[]}catch{return []}});const [calendarEvents,setCalendarEvents]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem('ambiCalendarEventsV19'));return Array.isArray(saved)&&saved.length?saved:seedCalendarEvents}catch{return seedCalendarEvents}});const pageRef=useRef(page);const lastBackRef=useRef(0);const historyReadyRef=useRef(false);const setPage=(next)=>{setPageRaw(prev=>{const target=typeof next==='function'?next(prev):next;if(target&&target!==prev){pageRef.current=target;if(historyReadyRef.current&&typeof window!=='undefined'){window.history.pushState({ambiPage:target},'',`${window.location.pathname}${window.location.search}#${target}`)}}return target||prev})};useEffect(()=>{pageRef.current=page},[page]);useEffect(()=>{if(typeof window==='undefined')return;if(!window.history.state?.ambiPage){window.history.replaceState({ambiPage:'home'},'',`${window.location.pathname}${window.location.search}#home`)}historyReadyRef.current=true;const onPop=()=>{const target=window.history.state?.ambiPage||'home';pageRef.current=target;setPageRaw(target)};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);useEffect(()=>{if(!supabaseConfigured||!supabase){if(import.meta.env.DEV){console.warn('AMBI Supabase is not configured. Check .env.local.')}return}let active=true;supabase.auth.getSession().then(({error})=>{if(!active)return;if(error&&import.meta.env.DEV){console.warn('AMBI Supabase session check failed:',error.message)}});const {data}=supabase.auth.onAuthStateChange(()=>{});return()=>{active=false;data?.subscription?.unsubscribe?.()}},[]);useEffect(()=>{let active=true;async function loadMembersFromSupabase(){if(!supabaseConfigured||!supabase){return}try{const {data,error}=await supabase.from('members').select('*').eq('approved',true).order('full_name',{ascending:true});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);setSelected(prev=>prev||mapped[0]);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI Supabase members load failed. Using local directory fallback.',error?.message||error);}}}loadMembersFromSupabase();return()=>{active=false}},[]);useEffect(()=>{let handle;CapacitorApp.addListener('backButton',()=>{const current=pageRef.current;if(current&&current!=='home'){setPage('home');return}const now=Date.now();if(now-lastBackRef.current<2000){CapacitorApp.exitApp();return}lastBackRef.current=now;setToast('Press back again to exit')}).then(h=>{handle=h}).catch(()=>{});return()=>{if(handle&&handle.remove)handle.remove()}},[]);useEffect(()=>localStorage.setItem('ambiMembersRealV2',JSON.stringify(members)),[members]);useEffect(()=>localStorage.setItem('ambiLoggedIn',loggedIn?'true':'false'),[loggedIn]);useEffect(()=>localStorage.setItem('ambiContactsV18',JSON.stringify(contacts)),[contacts]);useEffect(()=>localStorage.setItem('ambiCalendarEventsV19',JSON.stringify(calendarEvents)),[calendarEvents]);useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),2400);return()=>clearTimeout(t)}},[toast]);const filtered=useMemo(()=>members.filter(m=>(cat==='All'||m.category===cat)&&(`${m.name} ${m.company} ${m.category} ${m.services}`.toLowerCase().includes(query.toLowerCase()))),[members,cat,query]);const sectors=SECTORS.map(s=>({name:s,count:s==='All'?members.length:members.filter(m=>m.category===s).length}));function saveMember(){if(!form.name||!form.company){setToast('Name and company are required');return} if(editing){setMembers(ms=>ms.map(m=>m.id===editing?{...form,id:editing}:m));setToast('Member profile updated')}else{setMembers(ms=>[{...form,id:'m'+Date.now()},...ms]);setToast('New member saved to directory')}setForm(blank);setEditing(null);setPage('directory')}function edit(m){setForm(m);setEditing(m.id);setPage('management')}function del(id){setMembers(ms=>ms.filter(m=>m.id!==id));setToast('Member deleted from local directory')}function openProfile(m){if(selected?.id&&m.id!==selected.id){setContacts(cs=>cs.some(c=>c.id===m.id)?cs:[{id:m.id,name:m.name,company:m.company,date:new Date().toLocaleDateString()},...cs].slice(0,8));}setSelected(m);setPage('profile')}function logout(){setLoggedIn(false);setToast('Logged out successfully');setPage('profile')}function login(){setLoggedIn(true);setToast('Logged in');setPage('profile')}return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>setPage('home')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>setPage('home')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>setPage('directory')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>setPage('calendar')}>Calendar</button></nav><button className="notif" onClick={()=>setPage('notifications')}><Bell/><span>3</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>Members App</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','management'].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{setPage(p);setDrawer(false)}}>{p==='calendar'?'Calendar':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} setPage={setPage} openProfile={openProfile}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={login} activity={profileActivity}/>} {page==='management'&&<Management form={form} setForm={setForm} saveMember={saveMember} editing={editing} cancel={()=>{setEditing(null);setForm(blank)}} members={members} edit={edit} del={del}/>} {page==='submit'&&<SubmitContent/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer><div className="bottom"><button onClick={()=>setPage('home')}><Home/>Home</button><button onClick={()=>setPage('directory')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>setPage('submit')}><Plus/></button><button onClick={()=>setPage('calendar')}><CalendarDays/>Calendar</button><button onClick={()=>setPage('profile')}><UserCircle/>Profile</button></div>{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>}
+
+function accountToMember(row){
+  return {
+    id: row.member_id || row.id,
+    name: row.full_name || '',
+    position: row.title || '',
+    company: row.company_name || '',
+    category: row.category || 'Professional Services',
+    email: row.email || '',
+    phone: row.phone || '',
+    website: row.website || '',
+    address: [row.city, row.state].filter(Boolean).join(', '),
+    services: row.bio || row.category || '',
+    about: row.bio || `${row.company_name || row.full_name || 'This member'} is listed as an approved AMBI/BEG member.`,
+    display: row.profile_photo_url ? 'photo' : row.logo_url ? 'logo' : 'initials',
+    photo: row.profile_photo_url || '',
+    logo: row.logo_url || '',
+    verified: true,
+    approvedBy: 'AMBI Member Login'
+  };
+}
+
+function isSessionValid(account){
+  if(!account?.session_token || !account?.expires_at)return false;
+  return new Date(account.expires_at).getTime() > Date.now();
+}
+
+function toAppEvent(row){
+  return {
+    id: row.id,
+    title: row.title || 'Untitled Event',
+    date: row.event_date || '',
+    time: row.event_time || 'All day',
+    location: row.location || 'AMBI',
+    type: row.event_type || 'Member Event',
+    createdBy: row.created_by_name || 'Verified Member',
+    source: 'Supabase events table',
+    attending: Array.isArray(row.attending) ? row.attending : [],
+    maybe: Array.isArray(row.maybe) ? row.maybe : [],
+    not: Array.isArray(row.not_attending) ? row.not_attending : [],
+    blocked: row.blocked === true,
+    blockedBy: row.blocked_by || ''
+  };
+}
+
+function toEventRow(ev){
+  return {
+    title: ev.title || 'Untitled Event',
+    description: ev.description || ev.source || '',
+    event_date: ev.date || eventKeyDate(ev),
+    event_time: ev.time || 'All day',
+    location: ev.location || 'AMBI',
+    event_type: ev.type || 'Member Event',
+    created_by_name: ev.createdBy || 'Verified Member',
+    attending: ev.attending || [],
+    maybe: ev.maybe || [],
+    not_attending: ev.not || [],
+    blocked: ev.blocked === true,
+    blocked_by: ev.blockedBy || null
+  };
+}
+
+function mergeCalendarEvents(staticEvents, backendEvents){
+  const byId = new Map();
+  [...staticEvents, ...backendEvents].forEach(ev => {
+    if (ev && ev.id) byId.set(ev.id, ev);
+  });
+  return [...byId.values()].sort((a,b)=>String(eventKeyDate(a)).localeCompare(String(eventKeyDate(b))));
+}
+
+function App(){
+  const [page,setPageRaw]=useState('home');
+  const [drawer,setDrawer]=useState(false);
+  const [members,setMembers]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiMembersRealV2'))||seedMembers}catch{return seedMembers}});
+  const [query,setQuery]=useState('');
+  const [cat,setCat]=useState('All');
+  const [selected,setSelected]=useState(null);
+  const [form,setForm]=useState(blank);
+  const [editing,setEditing]=useState(null);
+  const [toast,setToast]=useState('');
+  const [currentAccount,setCurrentAccount]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem('ambiCurrentAccountV19'));return isSessionValid(saved)?saved:null}catch{return null}});
+  const loggedIn=!!currentAccount;
+  const [contacts,setContacts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiContactsV18'))||[]}catch{return []}});
+  const [calendarEvents,setCalendarEvents]=useState(seedCalendarEvents);
+  const pageRef=useRef(page);
+  const lastBackRef=useRef(0);
+  const historyReadyRef=useRef(false);
+
+  const setPage=(next)=>{setPageRaw(prev=>{const target=typeof next==='function'?next(prev):next;if(target&&target!==prev){pageRef.current=target;if(historyReadyRef.current&&typeof window!=='undefined'){window.history.pushState({ambiPage:target},'',`${window.location.pathname}${window.location.search}#${target}`)}}return target||prev})};
+
+  useEffect(()=>{pageRef.current=page},[page]);
+  useEffect(()=>{if(typeof window==='undefined')return;if(!window.history.state?.ambiPage){window.history.replaceState({ambiPage:'home'},'',`${window.location.pathname}${window.location.search}#home`)}historyReadyRef.current=true;const onPop=()=>{const target=window.history.state?.ambiPage||'home';pageRef.current=target;setPageRaw(target)};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
+
+  useEffect(()=>{if(!currentAccount)return;const member=accountToMember(currentAccount);setSelected(member);setPage('home')},[]);
+
+  useEffect(()=>{if(!supabaseConfigured||!supabase){if(import.meta.env.DEV){console.warn('AMBI Supabase is not configured. Check .env.local.')}return}let active=true;supabase.auth.getSession().then(({error})=>{if(!active)return;if(error&&import.meta.env.DEV){console.warn('AMBI Supabase session check failed:',error.message)}});const {data}=supabase.auth.onAuthStateChange(()=>{});return()=>{active=false;data?.subscription?.unsubscribe?.()}},[]);
+
+  useEffect(()=>{let active=true;async function loadMembers(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_members',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);const currentMember=mapped.find(m=>m.id===currentAccount.member_id)||accountToMember(currentAccount);setSelected(currentMember);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI member directory load failed. Using local fallback.',error?.message||error);}}}loadMembers();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+
+  useEffect(()=>{let active=true;async function loadEvents(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_events',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppEvent).filter(ev=>ev.title&&ev.date);setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,mapped));}catch(error){if(import.meta.env.DEV){console.warn('AMBI events load failed. Using built-in calendar fallback.',error?.message||error);}}}loadEvents();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+
+  useEffect(()=>{let handle;CapacitorApp.addListener('backButton',()=>{const current=pageRef.current;if(current&&current!=='home'){setPage('home');return}const now=Date.now();if(now-lastBackRef.current<2000){CapacitorApp.exitApp();return}lastBackRef.current=now;setToast('Press back again to exit')}).then(h=>{handle=h}).catch(()=>{});return()=>{if(handle&&handle.remove)handle.remove()}},[]);
+  useEffect(()=>localStorage.setItem('ambiMembersRealV2',JSON.stringify(members)),[members]);
+  useEffect(()=>{if(currentAccount)localStorage.setItem('ambiCurrentAccountV19',JSON.stringify(currentAccount));else localStorage.removeItem('ambiCurrentAccountV19')},[currentAccount]);
+  useEffect(()=>localStorage.setItem('ambiContactsV18',JSON.stringify(contacts)),[contacts]);
+  useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),2400);return()=>clearTimeout(t)}},[toast]);
+
+  const filtered=useMemo(()=>members.filter(m=>(cat==='All'||m.category===cat)&&(`${m.name} ${m.company} ${m.category} ${m.services}`.toLowerCase().includes(query.toLowerCase()))),[members,cat,query]);
+  const sectors=SECTORS.map(s=>({name:s,count:s==='All'?members.length:members.filter(m=>m.category===s).length}));
+
+  async function handleMemberLogin(username,password){
+    if(!supabaseConfigured||!supabase){throw new Error('Supabase is not configured on this build.');}
+    const {data,error}=await supabase.rpc('ambi_member_login',{p_username:username.trim(),p_password:password});
+    if(error)throw error;
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row?.session_token)throw new Error('Invalid username or password.');
+    setCurrentAccount(row);
+    const member=accountToMember(row);
+    setSelected(member);
+    setMembers(ms=>ms.some(m=>m.id===member.id)?ms:[member,...ms]);
+    setToast(row.must_change_password?'Login successful. Please change your temporary password soon.':'Login successful');
+    setPage('home');
+  }
+
+  async function handleChangePassword(currentPassword,newPassword){
+    if(!currentAccount?.account_id)throw new Error('You need to log in first.');
+    const {data,error}=await supabase.rpc('ambi_change_password',{p_account_id:currentAccount.account_id,p_current_password:currentPassword,p_new_password:newPassword});
+    if(error)throw error;
+    if(!data)throw new Error('Current password is incorrect.');
+    const updated={...currentAccount,must_change_password:false};
+    setCurrentAccount(updated);
+    setToast('Password changed successfully');
+  }
+
+  function saveMember(){if(!form.name||!form.company){setToast('Name and company are required');return} if(editing){setMembers(ms=>ms.map(m=>m.id===editing?{...form,id:editing}:m));setToast('Member profile updated')}else{setMembers(ms=>[{...form,id:'m'+Date.now()},...ms]);setToast('New member saved to directory')}setForm(blank);setEditing(null);setPage('directory')}
+  function edit(m){setForm(m);setEditing(m.id);setPage('management')}
+  function del(id){setMembers(ms=>ms.filter(m=>m.id!==id));setToast('Member deleted from local directory')}
+  function openProfile(m){if(selected?.id&&m.id!==selected.id){setContacts(cs=>cs.some(c=>c.id===m.id)?cs:[{id:m.id,name:m.name,company:m.company,date:new Date().toLocaleDateString()},...cs].slice(0,8));}setSelected(m);setPage('profile')}
+  function logout(){setCurrentAccount(null);setSelected(null);setContacts([]);setCalendarEvents(seedCalendarEvents);setToast('Logged out successfully');setPage('login')}
+
+  const locked=!loggedIn;
+
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile','management'].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} setPage={setPage} openProfile={openProfile}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&<Management form={form} setForm={setForm} saveMember={saveMember} editing={editing} cancel={()=>{setEditing(null);setForm(blank)}} members={members} edit={edit} del={del}/>} {page==='submit'&&<SubmitContent/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer><div className="bottom"><button onClick={()=>loggedIn?setPage('home'):setPage('login')}><Home/>Home</button><button onClick={()=>loggedIn?setPage('directory'):setPage('login')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>loggedIn?setPage('submit'):setPage('login')}><Plus/></button><button onClick={()=>loggedIn?setPage('calendar'):setPage('login')}><CalendarDays/>Calendar</button><button onClick={()=>loggedIn?setPage('profile'):setPage('login')}><UserCircle/>Profile</button></div>{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>
+}
+
+function LoginPage({onLogin}){
+  const [username,setUsername]=useState('');
+  const [password,setPassword]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  async function submit(e){
+    e.preventDefault();
+    setError('');
+    if(!username.trim()||!password){setError('Enter your AMBI username and password.');return;}
+    setBusy(true);
+    try{await onLogin(username,password)}catch(err){setError(err?.message||'Login failed. Ask admin to check your account.')}finally{setBusy(false)}
+  }
+  return <><section className="pageHero profileLogin"><p className="eyebrow">Members only</p><h1>AMBI member login</h1><p>This APK can be opened by anyone, but live directory, calendar, RSVP and submissions only unlock for admin-approved AMBI members.</p></section><section className="builder submitClean"><form onSubmit={submit}><label>Username / Member ID<input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Example: hemanta" autoCapitalize="none"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Temporary or changed password"/></label><button type="submit" disabled={busy}><UserCircle/>{busy?'Checking...':'Log in'}</button>{error&&<div className="successMsg">{error}</div>}<p className="mutedText">No public sign-up. Admin creates your username and temporary password. Contact AMBI admin if you need access or password reset.</p></form><aside className="preview"><h2>Controlled access</h2><div className="contentPreviewCard"><span>Approved members only</span><h3>APK sharing is safe</h3><p>People may install the APK, but without an approved username and password they cannot access live member data.</p><small>Admin-controlled login</small></div></aside></section></>
+}
+
 function HomePage({members,calendarEvents=[],setPage,openProfile}){return <><section className="hero"><div><p className="eyebrow">Business Excellence Group • Since 2017</p><h1>Connecting entrepreneurs, professionals and industry leaders.</h1><p>AMBI is the members-only digital platform for the Business Excellence Group, built around verified member profiles, business sectors, events, RSVP, announcements and digital visiting cards.</p><div className="heroActions"><button onClick={()=>setPage('directory')}>Explore Directory <ChevronRight/></button><button onClick={()=>setPage('submit')}>Submit Announcement <Plus/></button></div></div><div className="heroCard"><img src="/ambi-logo.png"/><b>{members.length}</b><span>approved BEG members</span></div></section><section className="stats"><div><b>{members.length}</b><span>Approved Members</span></div><div><b>{new Set(members.map(m=>m.category)).size}</b><span>Active Sectors</span></div><div><b>{calendarEvents.filter(e=>!e.blocked).length}</b><span>Calendar Items</span></div><div><b>2017</b><span>BEG Established</span></div></section><section className="panel"><div className="sectionHead"><h2>Featured members</h2><button onClick={()=>setPage('directory')}>View all</button></div><div className="memberGrid">{members.slice(0,4).map(m=><MemberCard key={m.id} m={m} openProfile={openProfile}/>)}</div></section></>}
 
 function AboutPage(){return <><section className="pageHero"><p className="eyebrow">About the Business Excellence Group</p><h1>Built from a collective voice for business progress.</h1><p>The Business Excellence Group was created in 2017 as a common platform for young emerging business establishments, entrepreneurs and professionals to share ideas, strengthen relationships and give meaningful direction toward greater goals.</p></section><section className="stats"><div><b>2017</b><span>Founded</span></div><div><b>BEG</b><span>Registered Society, Manipur</span></div><div><b>15+</b><span>Business Sectors</span></div><div><b>SYNERGY</b><span>Business Summit</span></div></section><section className="panel story"><h2>Our journey</h2><p>In a short span of time, BEG has emerged as a forward-thinking and progressive organisation in the trade and commerce ecosystem. Government departments, institutions, trade bodies and prominent establishments recognise BEG as a growing collective of first-generation business enterprises, entrepreneurs and professionals.</p><p>What started as a rendezvous to share ideas and experiences soon grew into a vibrant network. Members represent diverse sectors including manufacturing, hospitality, healthcare, education, e-commerce, retail, automobiles, real estate, construction, IT, finance, cosmetics, FMCG, food and beverage and more.</p></section><section className="panel story"><h2>Community and economic engagement</h2><p>BEG has supported humanitarian initiatives from flood relief to COVID-19 assistance, including the distribution of food and essential items to children’s homes, de-addiction centres and differently abled centres.</p><p>To strengthen economic relationships, BEG has participated in national and international conclaves. SYNERGY, a business summit with Myanmar business delegates, created an important platform for dialogue between enterprises of Manipur and neighbouring regions.</p></section></>}
@@ -1462,11 +1621,21 @@ function Directory({members,sectors,cat,setCat,query,setQuery,openProfile}){
   return <><section className="pageHero directoryLandingHero"><p className="eyebrow">AMBI real member directory</p><h1>Browse approved BEG members by category.</h1><p>Choose a business sector to open its member list. All categories are organized alphabetically after All.</p><div className="search"><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search all 80 members..."/></div></section>{query&&<section className="memberGrid wide directorySearchPreview">{categoryMembers.map(m=><MemberCard key={m.id} m={m} openProfile={openProfile}/>)}</section>}<section className="sectors directoryCategoryGrid">{categoryCards.map(s=><button key={s.name} className={cat===s.name?'active':''} onClick={()=>openCategory(s.name)}><span className="sectorIcon">{CATEGORY_ICONS[s.name]||'📋'}</span><b>{s.name}</b><span>{s.count} member{s.count===1?'':'s'}</span></button>)}</section></>}
 
 function MemberCard({m,openProfile}){return <button className="memberCard" onClick={()=>openProfile(m)}><Avatar m={m}/><div><h3>{m.name}</h3><p>{m.company}</p><span>{m.category}</span><small><ShieldCheck/> Verified Member</small></div><ChevronRight/></button>}
-function Profile({member,edit,contacts=[],loggedIn=true,logout,login,activity=[]}){if(!loggedIn){return <section className="pageHero profileLogin"><p className="eyebrow">Member profile</p><h1>You are logged out.</h1><p>Log in to view your name, details, visiting card, contacts, connections and activity history.</p><button onClick={login}><UserCircle/> Log in as member</button></section>}if(!member)return <section className="pageHero"><h1>Profile not found</h1></section>;const history=[...activity,{id:'profile-update',type:'Profile',title:'Digital visiting card ready',status:'Completed',date:'Today',approvedBy:member.approvedBy||'Committee Admin'}];const ads=history.filter(h=>/ad|advertisement|promotion|poster|announcement/i.test(`${h.type} ${h.title}`));return <><section className="profileCover profileCoverClean"><Avatar m={member} big/><div className="profileTitleBlock"><p className="eyebrow">My verified profile</p><h1>{member.name}</h1><p>{member.position||'Member'} • {member.company}</p><p className="profileApproved">Verified by {member.approvedBy||'Committee Admin'}</p></div><button className="logoutBtn" onClick={logout}>Logout</button></section><section className="profileDashboard"><div className="profileMain"><div className="panel profileDetailsCard"><div className="sectionHead"><div><p className="eyebrow">Your details</p><h2>Member information</h2></div><button onClick={()=>edit(member)}><Edit3/> Edit profile</button></div><div className="profileInfoRows"><p><b>Name</b><span>{member.name}</span></p><p><b>Company</b><span>{member.company}</span></p><p><b>Position</b><span>{member.position||'Member'}</span></p><p><b>Category</b><span>{member.category}</span></p><p><b>Email</b><span>{member.email||'Not provided'}</span></p><p><b>Phone</b><span>{member.phone||'Hidden or not provided'}</span></p><p><b>Address</b><span>{member.address||'Not provided'}</span></p></div><h2>About</h2><p>{member.about||'Business profile introduction will appear here.'}</p><h2>Services</h2><div className="chips">{(member.services||member.category||'Member').split(',').map(x=><span key={x}>{x.trim()}</span>)}</div></div><div className="panel"><div className="sectionHead"><div><p className="eyebrow">History</p><h2>Your activity</h2></div><span className="historyCount">{history.length}</span></div><div className="historyList">{history.map(h=><div key={h.id} className="historyItem"><div><b>{h.title}</b><small>{h.type} • {h.date}</small></div><span className={h.status==='Approved'||h.status==='Completed'?'ok':'wait'}>{h.status}</span></div>)}</div></div></div><aside className="profileSide"><div className="vcard profileVcard"><div className="vfront"><Avatar m={member}/><h2>{member.name}</h2><p>{member.company}</p><small>{member.email||'Email not provided'}</small><small>{member.phone||'Phone hidden'}</small></div><div className="vback"><h3>Services</h3><p>{member.services||member.category}</p><button><Share2/> Share digital card</button><button><Download/> Download card</button></div></div><div className="panel profileMiniPanel"><p className="eyebrow">Contacts</p><h2>Who you contacted</h2>{contacts.length?contacts.map(c=><div className="contactRow" key={c.id}><b>{c.name}</b><small>{c.company} • {c.date}</small></div>):<p className="mutedText">No contact history yet. Open a member from Directory to add them here.</p>}</div><div className="panel profileMiniPanel"><p className="eyebrow">Connections & posts</p><h2>Summary</h2><div className="profileStats"><div><b>{contacts.length}</b><span>Contacts</span></div><div><b>{Math.max(contacts.length-1,0)}</b><span>Connections</span></div><div><b>{ads.length}</b><span>Ads / posts</span></div></div></div></aside></section></>}
+
+function PasswordChangeBox({currentAccount,changePassword}){
+  const [currentPassword,setCurrentPassword]=useState('');
+  const [newPassword,setNewPassword]=useState('');
+  const [msg,setMsg]=useState('');
+  const [busy,setBusy]=useState(false);
+  async function submit(e){e.preventDefault();setMsg('');if(!newPassword||newPassword.length<6){setMsg('New password must be at least 6 characters.');return;}setBusy(true);try{await changePassword(currentPassword,newPassword);setCurrentPassword('');setNewPassword('');setMsg('Password updated.')}catch(err){setMsg(err?.message||'Password change failed.')}finally{setBusy(false)}}
+  return <div className="panel profileMiniPanel"><p className="eyebrow">Account</p><h2>{currentAccount?.must_change_password?'Change temporary password':'Password'}</h2><form onSubmit={submit}><label>Current password<input type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></label><label>New password<input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></label><button type="submit" disabled={busy}><Save/>{busy?'Saving...':'Change password'}</button>{msg&&<small>{msg}</small>}</form></div>
+}
+
+function Profile({member,edit,contacts=[],loggedIn=true,logout,login,activity=[],currentAccount,changePassword}){if(!loggedIn){return <section className="pageHero profileLogin"><p className="eyebrow">Member profile</p><h1>You are logged out.</h1><p>Log in to view your name, details, visiting card, contacts, connections and activity history.</p><button onClick={login}><UserCircle/> Log in as member</button></section>}if(!member)return <section className="pageHero"><h1>Profile not found</h1></section>;const history=[...activity,{id:'profile-update',type:'Profile',title:'Digital visiting card ready',status:'Completed',date:'Today',approvedBy:member.approvedBy||'Committee Admin'}];const ads=history.filter(h=>/ad|advertisement|promotion|poster|announcement/i.test(`${h.type} ${h.title}`));return <><section className="profileCover profileCoverClean"><Avatar m={member} big/><div className="profileTitleBlock"><p className="eyebrow">My verified profile</p><h1>{member.name}</h1><p>{member.position||'Member'} • {member.company}</p><p className="profileApproved">Verified by {member.approvedBy||'Committee Admin'}</p></div><button className="logoutBtn" onClick={logout}>Logout</button></section><section className="profileDashboard"><div className="profileMain"><div className="panel profileDetailsCard"><div className="sectionHead"><div><p className="eyebrow">Your details</p><h2>Member information</h2></div><button onClick={()=>edit(member)}><Edit3/> Edit profile</button></div><div className="profileInfoRows"><p><b>Name</b><span>{member.name}</span></p><p><b>Company</b><span>{member.company}</span></p><p><b>Position</b><span>{member.position||'Member'}</span></p><p><b>Category</b><span>{member.category}</span></p><p><b>Email</b><span>{member.email||'Not provided'}</span></p><p><b>Phone</b><span>{member.phone||'Hidden or not provided'}</span></p><p><b>Address</b><span>{member.address||'Not provided'}</span></p></div><h2>About</h2><p>{member.about||'Business profile introduction will appear here.'}</p><h2>Services</h2><div className="chips">{(member.services||member.category||'Member').split(',').map(x=><span key={x}>{x.trim()}</span>)}</div></div><div className="panel"><div className="sectionHead"><div><p className="eyebrow">History</p><h2>Your activity</h2></div><span className="historyCount">{history.length}</span></div><div className="historyList">{history.map(h=><div key={h.id} className="historyItem"><div><b>{h.title}</b><small>{h.type} • {h.date}</small></div><span className={h.status==='Approved'||h.status==='Completed'?'ok':'wait'}>{h.status}</span></div>)}</div></div></div><aside className="profileSide"><div className="vcard profileVcard"><div className="vfront"><Avatar m={member}/><h2>{member.name}</h2><p>{member.company}</p><small>{member.email||'Email not provided'}</small><small>{member.phone||'Phone hidden'}</small></div><div className="vback"><h3>Services</h3><p>{member.services||member.category}</p><button><Share2/> Share digital card</button><button><Download/> Download card</button></div></div>{changePassword&&<PasswordChangeBox currentAccount={currentAccount} changePassword={changePassword}/>}<div className="panel profileMiniPanel"><p className="eyebrow">Contacts</p><h2>Who you contacted</h2>{contacts.length?contacts.map(c=><div className="contactRow" key={c.id}><b>{c.name}</b><small>{c.company} • {c.date}</small></div>):<p className="mutedText">No contact history yet. Open a member from Directory to add them here.</p>}</div><div className="panel profileMiniPanel"><p className="eyebrow">Connections & posts</p><h2>Summary</h2><div className="profileStats"><div><b>{contacts.length}</b><span>Contacts</span></div><div><b>{Math.max(contacts.length-1,0)}</b><span>Connections</span></div><div><b>{ads.length}</b><span>Ads / posts</span></div></div></div></aside></section></>}
 
 function Management({form,setForm,saveMember,editing,cancel,members,edit,del}){function up(k,v){setForm({...form,[k]:v})}return <><section className="pageHero"><p className="eyebrow">Management portal</p><h1>{editing?'Edit member profile':'Add new member to directory'}</h1><p>Committee-only area for adding approved members, updating business profiles, and controlling how each member appears in the directory.</p></section><section className="builder"><form onSubmit={e=>{e.preventDefault();saveMember()}}><div className="two"><label>Name<input value={form.name} onChange={e=>up('name',e.target.value)} placeholder="Member real name"/></label><label>Position<input value={form.position} onChange={e=>up('position',e.target.value)} placeholder="Proprietor / Director"/></label></div><label>Company<input value={form.company} onChange={e=>up('company',e.target.value)} placeholder="Company name"/></label><div className="two"><label>Category<select value={form.category} onChange={e=>up('category',e.target.value)}>{SECTORS.filter(x=>x!=='All').map(x=><option key={x}>{x}</option>)}</select></label><label>Email<input value={form.email} onChange={e=>up('email',e.target.value)} placeholder="email@example.com"/></label></div><div className="two"><label>Phone<input value={form.phone} onChange={e=>up('phone',e.target.value)} placeholder="Optional"/></label><label>Address<input value={form.address} onChange={e=>up('address',e.target.value)} placeholder="Imphal, Manipur"/></label></div><label>Services<textarea value={form.services} onChange={e=>up('services',e.target.value)} placeholder="List services separated by commas"/></label><label>About<textarea value={form.about} onChange={e=>up('about',e.target.value)} placeholder="Short company/member introduction"/></label><div className="uploads"><label><Upload/> Upload personal photo<input type="file" accept="image/*" onChange={e=>readFile(e.target.files[0],v=>up('photo',v))}/>{form.photo&&<span>Photo uploaded</span>}</label><label><ImageIcon/> Upload company logo<input type="file" accept="image/*" onChange={e=>readFile(e.target.files[0],v=>up('logo',v))}/>{form.logo&&<span>Logo uploaded</span>}</label></div><fieldset><legend>Directory display preference</legend>{['photo','logo','initials'].map(x=><label key={x} className="radio"><input type="radio" checked={form.display===x} onChange={()=>up('display',x)}/>{x==='photo'?'Show personal photo':x==='logo'?'Show company logo':'Show initials only'}</label>)}</fieldset><div className="actions"><button type="submit"><Save/> {editing?'Update member':'Save member'}</button>{editing&&<button type="button" onClick={cancel}>Cancel edit</button>}</div></form><aside className="preview"><h2>Directory preview</h2><MemberCard m={{...form,name:form.name||'Member Name',company:form.company||'Company Name'}} openProfile={()=>{}}/><div className="vfront"><Avatar m={{...form,name:form.name||'Member Name',company:form.company||'Company Name'}}/><h2>{form.name||'Member Name'}</h2><p>{form.company||'Company Name'}</p><small>{form.email||'email@example.com'}</small></div></aside></section><section className="panel"><div className="sectionHead"><h2>Existing members</h2><span>{members.length} records</span></div><div className="tableList">{members.map(m=><div key={m.id}><Avatar m={m}/><b>{m.name}</b><span>{m.company}</span><button onClick={()=>edit(m)}><Edit3/></button><button onClick={()=>del(m.id)}><Trash2/></button></div>)}</div></section></>}
 
-function CalendarPage({members,openProfile,events,setEvents,currentMember}){
+function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount}){
   const todayMonth=5;
   const [view,setView]=useState('month');
   const [sound,setSound]=useState(true);
@@ -1489,28 +1658,61 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember}){
   const companies=[...new Set(attendeeMembers.map(m=>m.company))];
   const total=selectedEvent?(selectedEvent.attending||[]).length+(selectedEvent.maybe||[]).length+(selectedEvent.not||[]).length:0;
   function triggerSound(){if(!sound)return;try{new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{})}catch{}}
-  function doRsvp(status){
+  async function doRsvp(status){
     if(!selectedEvent)return;
     const name=currentMember?.name||'Verified Member';
+    let updatedEvent=null;
     setEvents(list=>list.map(ev=>{
       if(ev.id!==selectedEvent.id)return ev;
       const clean={...ev,attending:(ev.attending||[]).filter(n=>n!==name),maybe:(ev.maybe||[]).filter(n=>n!==name),not:(ev.not||[]).filter(n=>n!==name)};
       const key=status==='attending'?'attending':status==='maybe'?'maybe':'not';
-      return {...clean,[key]:[...(clean[key]||[]),name]};
+      updatedEvent={...clean,[key]:[...(clean[key]||[]),name]};
+      return updatedEvent;
     }));
+    if(supabaseConfigured&&supabase&&updatedEvent&&String(updatedEvent.id).length>20&&currentAccount?.session_token){
+      const {data,error}=await supabase.rpc('ambi_rsvp_event',{p_session_token:currentAccount.session_token,p_event_id:updatedEvent.id,p_status:status});
+      if(error&&import.meta.env.DEV)console.warn('RSVP saved locally but not in Supabase:',error.message);
+      if(data){const fresh=Array.isArray(data)?data[0]:data;if(fresh?.id){const mapped=toAppEvent(fresh);setEvents(list=>list.map(ev=>ev.id===mapped.id?mapped:ev));}}
+    }
     triggerSound();
   }
-  function saveEvent(){
+  async function saveEvent(){
     if(!draft.title.trim())return;
     const ev={id:'cal-'+Date.now(),title:draft.title.trim(),date:draft.date,time:draft.time||'All day',location:draft.location||'AMBI',type:draft.type||'Member Event',createdBy:currentMember?.name||draft.createdBy||'Verified Member',source:'Member-created calendar item',attending:[],maybe:[],not:[],blocked:false};
-    setEvents(list=>[ev,...list]);
-    setSelectedMonth(dateParts(ev.date).month);
-    setSelectedEventId(ev.id);
+    let savedEvent=ev;
+    if(supabaseConfigured&&supabase){
+      try{
+        if(!currentAccount?.session_token)throw new Error('Login session missing');
+        const {data,error}=await supabase.rpc('ambi_create_event',{p_session_token:currentAccount.session_token,p_title:ev.title,p_event_date:ev.date,p_event_time:ev.time,p_location:ev.location,p_event_type:ev.type,p_description:ev.source});
+        if(error)throw error;
+        const row=Array.isArray(data)?data[0]:data;
+        savedEvent=toAppEvent(row);
+      }catch(error){
+        if(import.meta.env.DEV)console.warn('Event saved locally but not in Supabase:',error?.message||error);
+      }
+    }
+    setEvents(list=>[savedEvent,...list.filter(item=>item.id!==savedEvent.id)]);
+    setSelectedMonth(dateParts(savedEvent.date).month);
+    setSelectedEventId(savedEvent.id);
     setShowCreate(false);
-    setDraft({title:'',date:ev.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
+    setDraft({title:'',date:savedEvent.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
   }
-  function blockEvent(id){setEvents(list=>list.map(ev=>ev.id===id?{...ev,blocked:true,blockedBy:'Admin'}:ev))}
-  function deleteEvent(id){setEvents(list=>list.filter(ev=>ev.id!==id))}
+  async function blockEvent(id){
+    if(!['admin','super_admin'].includes(currentAccount?.role)){alert('Admin only');return;}
+    setEvents(list=>list.map(ev=>ev.id===id?{...ev,blocked:true,blockedBy:currentAccount?.full_name||'Admin'}:ev));
+    if(supabaseConfigured&&supabase&&String(id).length>20&&currentAccount?.session_token){
+      const {error}=await supabase.rpc('ambi_block_event',{p_session_token:currentAccount.session_token,p_event_id:id});
+      if(error&&import.meta.env.DEV)console.warn('Event blocked locally but not in Supabase:',error.message);
+    }
+  }
+  async function deleteEvent(id){
+    if(!['admin','super_admin'].includes(currentAccount?.role)){alert('Admin only');return;}
+    setEvents(list=>list.filter(ev=>ev.id!==id));
+    if(supabaseConfigured&&supabase&&String(id).length>20&&currentAccount?.session_token){
+      const {error}=await supabase.rpc('ambi_delete_event',{p_session_token:currentAccount.session_token,p_event_id:id});
+      if(error&&import.meta.env.DEV)console.warn('Event deleted locally but not in Supabase:',error.message);
+    }
+  }
   return <>
     <section className="pageHero reminderHero"><p className="eyebrow">Calendar</p><h1>Member calendar, holidays and RSVP.</h1><p>Approved members can create calendar items directly. They appear immediately for everyone. Admins can remove or block inappropriate items.</p><div className="heroActions"><button onClick={()=>setShowCreate(true)}><Plus/>Create Event</button><button onClick={()=>setSound(!sound)}><Bell/>{sound?'Sound On':'Sound Off'}</button></div></section>
     <section className="calendarAppV16">
