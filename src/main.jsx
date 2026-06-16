@@ -1473,6 +1473,18 @@ function isSessionValid(account){
   return new Date(account.expires_at).getTime() > Date.now();
 }
 
+function adminRank(role){
+  return {member:0,level1_admin:1,admin:1,level2_admin:2,super_admin:3}[role] || 0;
+}
+function canAccessManagement(role){return adminRank(role)>=1}
+function canViewAccountStatus(role){return adminRank(role)>=2}
+function canCreateMemberLogin(role){return adminRank(role)>=2}
+function canAssignAdminRoles(role){return adminRank(role)>=3}
+function canModerate(role){return adminRank(role)>=1}
+function roleLabel(role){
+  return role==='super_admin'?'Super Admin':role==='level2_admin'?'Level 2 Admin':role==='level1_admin'||role==='admin'?'Level 1 Admin':'Member';
+}
+
 function toAppEvent(row){
   return {
     id: row.id,
@@ -1528,6 +1540,8 @@ function App(){
   const [toast,setToast]=useState('');
   const [currentAccount,setCurrentAccount]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem('ambiCurrentAccountV19'));return isSessionValid(saved)?saved:null}catch{return null}});
   const loggedIn=!!currentAccount;
+  const currentRole=currentAccount?.role || 'member';
+  const isManagementUser=canAccessManagement(currentRole);
   const [contacts,setContacts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiContactsV18'))||[]}catch{return []}});
   const [calendarEvents,setCalendarEvents]=useState(seedCalendarEvents);
   const pageRef=useRef(page);
@@ -1588,7 +1602,7 @@ function App(){
 
   const locked=!loggedIn;
 
-  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile','management'].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} setPage={setPage} openProfile={openProfile}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&<Management form={form} setForm={setForm} saveMember={saveMember} editing={editing} cancel={()=>{setEditing(null);setForm(blank)}} members={members} edit={edit} del={del}/>} {page==='submit'&&<SubmitContent/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer><div className="bottom"><button onClick={()=>loggedIn?setPage('home'):setPage('login')}><Home/>Home</button><button onClick={()=>loggedIn?setPage('directory'):setPage('login')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>loggedIn?setPage('submit'):setPage('login')}><Plus/></button><button onClick={()=>loggedIn?setPage('calendar'):setPage('login')}><CalendarDays/>Calendar</button><button onClick={()=>loggedIn?setPage('profile'):setPage('login')}><UserCircle/>Profile</button></div>{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} setPage={setPage} openProfile={openProfile}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} setPage={setPage} openProfile={openProfile}/>} {page==='submit'&&<SubmitContent/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer><div className="bottom"><button onClick={()=>loggedIn?setPage('home'):setPage('login')}><Home/>Home</button><button onClick={()=>loggedIn?setPage('directory'):setPage('login')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>loggedIn?setPage('submit'):setPage('login')}><Plus/></button><button onClick={()=>loggedIn?setPage('calendar'):setPage('login')}><CalendarDays/>Calendar</button><button onClick={()=>loggedIn?setPage('profile'):setPage('login')}><UserCircle/>Profile</button></div>{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>
 }
 
 function LoginPage({onLogin}){
@@ -1633,7 +1647,160 @@ function PasswordChangeBox({currentAccount,changePassword}){
 
 function Profile({member,edit,contacts=[],loggedIn=true,logout,login,activity=[],currentAccount,changePassword}){if(!loggedIn){return <section className="pageHero profileLogin"><p className="eyebrow">Member profile</p><h1>You are logged out.</h1><p>Log in to view your name, details, visiting card, contacts, connections and activity history.</p><button onClick={login}><UserCircle/> Log in as member</button></section>}if(!member)return <section className="pageHero"><h1>Profile not found</h1></section>;const history=[...activity,{id:'profile-update',type:'Profile',title:'Digital visiting card ready',status:'Completed',date:'Today',approvedBy:member.approvedBy||'Committee Admin'}];const ads=history.filter(h=>/ad|advertisement|promotion|poster|announcement/i.test(`${h.type} ${h.title}`));return <><section className="profileCover profileCoverClean"><Avatar m={member} big/><div className="profileTitleBlock"><p className="eyebrow">My verified profile</p><h1>{member.name}</h1><p>{member.position||'Member'} • {member.company}</p><p className="profileApproved">Verified by {member.approvedBy||'Committee Admin'}</p></div><button className="logoutBtn" onClick={logout}>Logout</button></section><section className="profileDashboard"><div className="profileMain"><div className="panel profileDetailsCard"><div className="sectionHead"><div><p className="eyebrow">Your details</p><h2>Member information</h2></div><button onClick={()=>edit(member)}><Edit3/> Edit profile</button></div><div className="profileInfoRows"><p><b>Name</b><span>{member.name}</span></p><p><b>Company</b><span>{member.company}</span></p><p><b>Position</b><span>{member.position||'Member'}</span></p><p><b>Category</b><span>{member.category}</span></p><p><b>Email</b><span>{member.email||'Not provided'}</span></p><p><b>Phone</b><span>{member.phone||'Hidden or not provided'}</span></p><p><b>Address</b><span>{member.address||'Not provided'}</span></p></div><h2>About</h2><p>{member.about||'Business profile introduction will appear here.'}</p><h2>Services</h2><div className="chips">{(member.services||member.category||'Member').split(',').map(x=><span key={x}>{x.trim()}</span>)}</div></div><div className="panel"><div className="sectionHead"><div><p className="eyebrow">History</p><h2>Your activity</h2></div><span className="historyCount">{history.length}</span></div><div className="historyList">{history.map(h=><div key={h.id} className="historyItem"><div><b>{h.title}</b><small>{h.type} • {h.date}</small></div><span className={h.status==='Approved'||h.status==='Completed'?'ok':'wait'}>{h.status}</span></div>)}</div></div></div><aside className="profileSide"><div className="vcard profileVcard"><div className="vfront"><Avatar m={member}/><h2>{member.name}</h2><p>{member.company}</p><small>{member.email||'Email not provided'}</small><small>{member.phone||'Phone hidden'}</small></div><div className="vback"><h3>Services</h3><p>{member.services||member.category}</p><button><Share2/> Share digital card</button><button><Download/> Download card</button></div></div>{changePassword&&<PasswordChangeBox currentAccount={currentAccount} changePassword={changePassword}/>}<div className="panel profileMiniPanel"><p className="eyebrow">Contacts</p><h2>Who you contacted</h2>{contacts.length?contacts.map(c=><div className="contactRow" key={c.id}><b>{c.name}</b><small>{c.company} • {c.date}</small></div>):<p className="mutedText">No contact history yet. Open a member from Directory to add them here.</p>}</div><div className="panel profileMiniPanel"><p className="eyebrow">Connections & posts</p><h2>Summary</h2><div className="profileStats"><div><b>{contacts.length}</b><span>Contacts</span></div><div><b>{Math.max(contacts.length-1,0)}</b><span>Connections</span></div><div><b>{ads.length}</b><span>Ads / posts</span></div></div></div></aside></section></>}
 
-function Management({form,setForm,saveMember,editing,cancel,members,edit,del}){function up(k,v){setForm({...form,[k]:v})}return <><section className="pageHero"><p className="eyebrow">Management portal</p><h1>{editing?'Edit member profile':'Add new member to directory'}</h1><p>Committee-only area for adding approved members, updating business profiles, and controlling how each member appears in the directory.</p></section><section className="builder"><form onSubmit={e=>{e.preventDefault();saveMember()}}><div className="two"><label>Name<input value={form.name} onChange={e=>up('name',e.target.value)} placeholder="Member real name"/></label><label>Position<input value={form.position} onChange={e=>up('position',e.target.value)} placeholder="Proprietor / Director"/></label></div><label>Company<input value={form.company} onChange={e=>up('company',e.target.value)} placeholder="Company name"/></label><div className="two"><label>Category<select value={form.category} onChange={e=>up('category',e.target.value)}>{SECTORS.filter(x=>x!=='All').map(x=><option key={x}>{x}</option>)}</select></label><label>Email<input value={form.email} onChange={e=>up('email',e.target.value)} placeholder="email@example.com"/></label></div><div className="two"><label>Phone<input value={form.phone} onChange={e=>up('phone',e.target.value)} placeholder="Optional"/></label><label>Address<input value={form.address} onChange={e=>up('address',e.target.value)} placeholder="Imphal, Manipur"/></label></div><label>Services<textarea value={form.services} onChange={e=>up('services',e.target.value)} placeholder="List services separated by commas"/></label><label>About<textarea value={form.about} onChange={e=>up('about',e.target.value)} placeholder="Short company/member introduction"/></label><div className="uploads"><label><Upload/> Upload personal photo<input type="file" accept="image/*" onChange={e=>readFile(e.target.files[0],v=>up('photo',v))}/>{form.photo&&<span>Photo uploaded</span>}</label><label><ImageIcon/> Upload company logo<input type="file" accept="image/*" onChange={e=>readFile(e.target.files[0],v=>up('logo',v))}/>{form.logo&&<span>Logo uploaded</span>}</label></div><fieldset><legend>Directory display preference</legend>{['photo','logo','initials'].map(x=><label key={x} className="radio"><input type="radio" checked={form.display===x} onChange={()=>up('display',x)}/>{x==='photo'?'Show personal photo':x==='logo'?'Show company logo':'Show initials only'}</label>)}</fieldset><div className="actions"><button type="submit"><Save/> {editing?'Update member':'Save member'}</button>{editing&&<button type="button" onClick={cancel}>Cancel edit</button>}</div></form><aside className="preview"><h2>Directory preview</h2><MemberCard m={{...form,name:form.name||'Member Name',company:form.company||'Company Name'}} openProfile={()=>{}}/><div className="vfront"><Avatar m={{...form,name:form.name||'Member Name',company:form.company||'Company Name'}}/><h2>{form.name||'Member Name'}</h2><p>{form.company||'Company Name'}</p><small>{form.email||'email@example.com'}</small></div></aside></section><section className="panel"><div className="sectionHead"><h2>Existing members</h2><span>{members.length} records</span></div><div className="tableList">{members.map(m=><div key={m.id}><Avatar m={m}/><b>{m.name}</b><span>{m.company}</span><button onClick={()=>edit(m)}><Edit3/></button><button onClick={()=>del(m.id)}><Trash2/></button></div>)}</div></section></>}
+
+function Management({members=[],events=[],setPage,currentAccount}){
+  const [accounts,setAccounts]=useState([]);
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState('');
+  const [loginDraft,setLoginDraft]=useState({memberId:'',username:'',password:'123456',role:'member'});
+  const [roleDraft,setRoleDraft]=useState({accountId:'',role:'level1_admin'});
+  const role=currentAccount?.role || 'member';
+  const canCreate=canCreateMemberLogin(role);
+  const canAssign=canAssignAdminRoles(role);
+  const canStatus=canViewAccountStatus(role);
+  const existingAccountMemberIds=useMemo(()=>new Set(accounts.map(a=>a.member_id)),[accounts]);
+  const membersWithoutAccounts=useMemo(()=>members.filter(m=>!existingAccountMemberIds.has(m.id)),[members,existingAccountMemberIds]);
+  const level1=accounts.filter(a=>a.role==='level1_admin'||a.role==='admin');
+  const level2=accounts.filter(a=>a.role==='level2_admin');
+  const supers=accounts.filter(a=>a.role==='super_admin');
+  const selectedRoleAccount=accounts.find(a=>a.account_id===roleDraft.accountId);
+  useEffect(()=>{loadAccounts()},[currentAccount?.session_token]);
+  useEffect(()=>{if(!loginDraft.memberId&&membersWithoutAccounts[0]){setLoginDraft(d=>({...d,memberId:membersWithoutAccounts[0].id}))}},[membersWithoutAccounts.length]);
+  useEffect(()=>{if(!roleDraft.accountId&&accounts[0]){setRoleDraft(d=>({...d,accountId:accounts[0].account_id}))}},[accounts.length]);
+  async function loadAccounts(){
+    if(!currentAccount?.session_token||!supabaseConfigured||!supabase)return;
+    try{
+      const {data,error}=await supabase.rpc('ambi_admin_get_accounts',{p_session_token:currentAccount.session_token});
+      if(error)throw error;
+      setAccounts(data||[]);
+    }catch(error){
+      setMsg(error?.message||'Could not load admin accounts. Run the v20.4 SQL first.');
+    }
+  }
+  async function createLogin(e){
+    e.preventDefault();
+    if(!canCreate){setMsg('Only Level 2 Admin or Super Admin can create logins.');return;}
+    if(!loginDraft.memberId||!loginDraft.username.trim()||!loginDraft.password){setMsg('Choose member, username and temporary password.');return;}
+    setBusy(true);setMsg('');
+    try{
+      const {error}=await supabase.rpc('ambi_admin_create_account',{p_session_token:currentAccount.session_token,p_member_id:loginDraft.memberId,p_username:loginDraft.username.trim(),p_temp_password:loginDraft.password,p_role:loginDraft.role});
+      if(error)throw error;
+      setMsg('Login account created with selected role. User must log in and change temporary password.');
+      setLoginDraft({memberId:'',username:'',password:'123456',role:'member'});
+      await loadAccounts();
+    }catch(error){setMsg(error?.message||'Create login failed.')}finally{setBusy(false)}
+  }
+  async function updateRole(e){
+    e.preventDefault();
+    if(!canAssign){setMsg('Only Super Admin can assign admin roles.');return;}
+    if(!roleDraft.accountId){setMsg('Choose an account first.');return;}
+    setBusy(true);setMsg('');
+    try{
+      const {error}=await supabase.rpc('ambi_admin_set_role',{p_session_token:currentAccount.session_token,p_account_id:roleDraft.accountId,p_role:roleDraft.role});
+      if(error)throw error;
+      setMsg('Role updated. Ask the user to log out and log back in.');
+      await loadAccounts();
+    }catch(error){setMsg(error?.message||'Role update failed.')}finally{setBusy(false)}
+  }
+  async function resetPassword(account){
+    const pass=prompt(`Temporary password for ${account.full_name || account.username}`,'123456');
+    if(!pass)return;
+    setBusy(true);setMsg('');
+    try{
+      const {error}=await supabase.rpc('ambi_admin_reset_password',{p_session_token:currentAccount.session_token,p_account_id:account.account_id,p_temp_password:pass});
+      if(error)throw error;
+      setMsg('Temporary password reset. User must change password on next login.');
+      await loadAccounts();
+    }catch(error){setMsg(error?.message||'Password reset failed.')}finally{setBusy(false)}
+  }
+  async function toggleActive(account){
+    const next=!account.is_active;
+    setBusy(true);setMsg('');
+    try{
+      const {error}=await supabase.rpc('ambi_admin_set_active',{p_session_token:currentAccount.session_token,p_account_id:account.account_id,p_is_active:next});
+      if(error)throw error;
+      setMsg(next?'Account unblocked.':'Account blocked.');
+      await loadAccounts();
+    }catch(error){setMsg(error?.message||'Account update failed.')}finally{setBusy(false)}
+  }
+  const roleOptions=[
+    ['member','Member'],
+    ['level1_admin','Level 1 Admin'],
+    ['level2_admin','Level 2 Admin'],
+    ['super_admin','Super Admin']
+  ];
+  return <>
+    <section className="pageHero">
+      <p className="eyebrow">Management</p>
+      <h1>Admin settings</h1>
+      <p>Simple admin setup: create a login for an approved directory member, then assign Level 1, Level 2 or Super Admin access one person at a time.</p>
+    </section>
+    <section className="stats">
+      <div><b>{level1.length}</b><span>Level 1 admins</span></div>
+      <div><b>{level2.length}</b><span>Level 2 admins</span></div>
+      <div><b>{supers.length}</b><span>Super admin</span></div>
+      <div><b>{accounts.length}</b><span>Login accounts</span></div>
+    </section>
+    {msg&&<div className="toast inlineToast"><CheckCircle2/>{msg}</div>}
+    <section className="builder submitClean">
+      <form onSubmit={createLogin}>
+        <p className="eyebrow">Step 1</p>
+        <h2>Create member login + role</h2>
+        <p className="mutedText">Create a username, temporary password, and role in one step. Leave Role as Member for normal users.</p>
+        <label>Member
+          <select value={loginDraft.memberId} onChange={e=>setLoginDraft({...loginDraft,memberId:e.target.value})} disabled={!canCreate||busy}>
+            <option value="">Select member without login</option>
+            {membersWithoutAccounts.map(m=><option key={m.id} value={m.id}>{m.name} — {m.company}</option>)}
+          </select>
+        </label>
+        <div className="two">
+          <label>Username<input value={loginDraft.username} onChange={e=>setLoginDraft({...loginDraft,username:e.target.value})} placeholder="example: robin" disabled={!canCreate||busy}/></label>
+          <label>Temporary password<input value={loginDraft.password} onChange={e=>setLoginDraft({...loginDraft,password:e.target.value})} placeholder="123456" disabled={!canCreate||busy}/></label>
+        </div>
+        <label>Role
+          <select value={loginDraft.role} onChange={e=>setLoginDraft({...loginDraft,role:e.target.value})} disabled={!canCreate||busy}>
+            {roleOptions.map(([value,label])=><option key={value} value={value} disabled={value!=='member'&&!canAssign}>{label}</option>)}
+          </select>
+        </label>
+        {!canAssign&&<small>Level 2 admins can create normal Member logins only. Super Admin can create Level 1 / Level 2 / Super Admin logins.</small>}
+        <button type="submit" disabled={!canCreate||busy}><Save/>Create login</button>
+        {!canCreate&&<small>Level 2 Admin or Super Admin only.</small>}
+      </form>
+      <form onSubmit={updateRole}>
+        <p className="eyebrow">Step 2</p>
+        <h2>Update existing account role</h2>
+        <p className="mutedText">For accounts already created, change the role here. Use Member to remove admin access.</p>
+        <label>Account
+          <select value={roleDraft.accountId} onChange={e=>setRoleDraft({...roleDraft,accountId:e.target.value})} disabled={!canAssign||busy}>
+            <option value="">Select account</option>
+            {accounts.map(a=><option key={a.account_id} value={a.account_id}>{a.full_name || a.username} — {a.username} — {roleLabel(a.role)}</option>)}
+          </select>
+        </label>
+        <label>Role
+          <select value={roleDraft.role} onChange={e=>setRoleDraft({...roleDraft,role:e.target.value})} disabled={!canAssign||busy}>{roleOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>
+        </label>
+        <button type="submit" disabled={!canAssign||busy}><ShieldCheck/>Update role</button>
+        {selectedRoleAccount&&<small>Selected: {selectedRoleAccount.full_name || selectedRoleAccount.username} is currently {roleLabel(selectedRoleAccount.role)}.</small>}
+        {!canAssign&&<small>Super Admin only.</small>}
+      </form>
+    </section>
+    <section className="panel">
+      <div className="sectionHead"><div><p className="eyebrow">Current admins</p><h2>Assigned admin team</h2></div><button onClick={loadAccounts}>Refresh</button></div>
+      <div className="tableList">
+        {[...supers,...level2,...level1].map(a=><div key={a.account_id}><Avatar m={{name:a.full_name||a.username,company:a.company_name||roleLabel(a.role),display:'initials'}}/><b>{a.full_name||a.username}</b><span>{roleLabel(a.role)} • {a.company_name||a.username}</span><small>{a.is_active?'Active':'Blocked'}</small></div>)}
+        {![...supers,...level2,...level1].length&&<p className="mutedText">No admin accounts assigned yet.</p>}
+      </div>
+    </section>
+    {canStatus&&<section className="panel">
+      <div className="sectionHead"><div><p className="eyebrow">Account control</p><h2>Reset or block accounts</h2></div><span>{accounts.length} accounts</span></div>
+      <div className="tableList">{accounts.map(a=><div key={a.account_id}><Avatar m={{name:a.full_name||a.username,company:a.company_name||'',display:'initials'}}/><b>{a.full_name||a.username}</b><span>{a.company_name||'No company'} • {roleLabel(a.role)} • {a.is_active?'Active':'Blocked'}</span><button onClick={()=>resetPassword(a)} disabled={busy}>Reset password</button><button onClick={()=>toggleActive(a)} disabled={busy}>{a.is_active?'Block':'Unblock'}</button></div>)}</div>
+    </section>}
+    <section className="panel">
+      <div className="sectionHead"><div><p className="eyebrow">Calendar moderation</p><h2>Block or delete events</h2></div><button onClick={()=>setPage('calendar')}><CalendarDays/>Open Calendar</button></div>
+      <div className="tableList">{events.filter(e=>!e.blocked).slice(0,10).map(ev=><div key={ev.id}><CalendarDays/><b>{ev.title}</b><span>{eventKeyDate(ev)} · {ev.time}</span><small>Use the Calendar page to block or delete this event.</small></div>)}</div>
+    </section>
+  </>
+}
 
 function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount}){
   const todayMonth=5;
@@ -1698,7 +1865,7 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
     setDraft({title:'',date:savedEvent.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
   }
   async function blockEvent(id){
-    if(!['admin','super_admin'].includes(currentAccount?.role)){alert('Admin only');return;}
+    if(!canModerate(currentAccount?.role)){alert('Admin only');return;}
     setEvents(list=>list.map(ev=>ev.id===id?{...ev,blocked:true,blockedBy:currentAccount?.full_name||'Admin'}:ev));
     if(supabaseConfigured&&supabase&&String(id).length>20&&currentAccount?.session_token){
       const {error}=await supabase.rpc('ambi_block_event',{p_session_token:currentAccount.session_token,p_event_id:id});
@@ -1706,7 +1873,7 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
     }
   }
   async function deleteEvent(id){
-    if(!['admin','super_admin'].includes(currentAccount?.role)){alert('Admin only');return;}
+    if(!canModerate(currentAccount?.role)){alert('Admin only');return;}
     setEvents(list=>list.filter(ev=>ev.id!==id));
     if(supabaseConfigured&&supabase&&String(id).length>20&&currentAccount?.session_token){
       const {error}=await supabase.rpc('ambi_delete_event',{p_session_token:currentAccount.session_token,p_event_id:id});
