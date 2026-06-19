@@ -573,3 +573,24 @@ button{transition:180ms ease}
 .toggleSwitch input:checked + span{background:#1E4735}
 .toggleSwitch input:checked + span:before{transform:translateX(30px)}
 .toggleSwitch input:disabled + span{opacity:.55;cursor:not-allowed}
+
+
+/* AMBI v21.5 — Private APK release control */
+.apkControlPanel textarea{min-height:86px}
+.apkSettingsForm button[type=submit],
+.apkDownloadBtn{
+  border:0;
+  border-radius:12px;
+  background:linear-gradient(135deg,var(--green),#1f6f55);
+  color:white;
+  padding:13px 18px;
+  font-weight:950;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  box-shadow:0 16px 36px rgba(15,76,58,.22);
+  text-decoration:none;
+}
+.apkUpdateRequired{max-width:760px;text-align:left}
+.apkUpdateRequired .apkDownloadBtn{margin-top:16px}

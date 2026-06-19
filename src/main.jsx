@@ -5,6 +5,28 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import {Menu,Home,Users,CalendarDays,Plus,UserCircle,Bell,Search,Upload,Edit3,Trash2,Save,ChevronRight,Building2,CheckCircle2,Image as ImageIcon,Download,Share2,BriefcaseBusiness,ShieldCheck,X} from 'lucide-react';
 import './styles.css';
 
+const AMBI_APP_VERSION='21.5.0';
+const AMBI_APP_VERSION_CODE=21500;
+
+function readStoredAppVersionSettings(){
+  try{
+    return JSON.parse(localStorage.getItem('ambiAppVersionSettingsV21')) || {
+      latestApkVersion:'21.5.0',
+      minimumApkVersionCode:'0',
+      latestApkDownloadUrl:'',
+      apkReleaseNotes:''
+    };
+  }catch{
+    return {
+      latestApkVersion:'21.5.0',
+      minimumApkVersionCode:'0',
+      latestApkDownloadUrl:'',
+      apkReleaseNotes:''
+    };
+  }
+}
+
+
 const SECTORS=['All','Healthcare','Automotive','Education','Construction','Hospitality','Food & Beverage','Retail & Trading','Technology','Finance & Consulting','Manufacturing','Media & Creative','Travel & Tourism','Real Estate','Professional Services'];
 const CATEGORY_ICONS={
   'All':'🌐',
@@ -1584,6 +1606,7 @@ function App(){
   const [calendarEvents,setCalendarEvents]=useState(seedCalendarEvents);
   const [memberPosts,setMemberPosts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiMemberPostsV20'))||seedPosts}catch{return seedPosts}});
   const [webFooterEnabled,setWebFooterEnabled]=useState(readStoredWebFooterSetting);
+  const [appVersionSettings,setAppVersionSettings]=useState(readStoredAppVersionSettings);
   const nativeApp=useMemo(()=>isNativeAMBIApp(),[]);
   const showBottomNav=nativeApp || webFooterEnabled;
   const pageRef=useRef(page);
@@ -1605,7 +1628,7 @@ function App(){
 
   useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
-  useEffect(()=>{let active=true;async function loadAppSettings(){if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_public_app_settings');if(error)throw error;if(!active)return;const rows=Array.isArray(data)?data:[];const footer=rows.find(row=>row.setting_key==='web_mobile_footer_enabled');if(footer){const enabled=String(footer.setting_value)==='true';setWebFooterEnabled(enabled);localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI app settings load failed. Using local setting fallback.',error?.message||error);}}}loadAppSettings();return()=>{active=false}},[]);
+  useEffect(()=>{let active=true;async function loadAppSettings(){if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_public_app_settings');if(error)throw error;if(!active)return;const rows=Array.isArray(data)?data:[];const read=(key,fallback='')=>{const found=rows.find(row=>row.setting_key===key);return found?String(found.setting_value):fallback};const footer=rows.find(row=>row.setting_key==='web_mobile_footer_enabled');if(footer){const enabled=String(footer.setting_value)==='true';setWebFooterEnabled(enabled);localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));}const nextVersionSettings={latestApkVersion:read('latest_apk_version','21.5.0'),minimumApkVersionCode:read('minimum_apk_version_code','0'),latestApkDownloadUrl:read('latest_apk_download_url',''),apkReleaseNotes:read('apk_release_notes','')};setAppVersionSettings(nextVersionSettings);localStorage.setItem('ambiAppVersionSettingsV21',JSON.stringify(nextVersionSettings));}catch(error){if(import.meta.env.DEV){console.warn('AMBI app settings load failed. Using local setting fallback.',error?.message||error);}}}loadAppSettings();return()=>{active=false}},[]);
 
   async function updateWebFooterSetting(enabled){
     const previous=webFooterEnabled;
@@ -1630,6 +1653,36 @@ function App(){
     }
   }
 
+
+  async function updateAppSetting(settingKey,settingValue){
+    if(!canAssignAdminRoles(currentRole)){
+      setToast('Super Admin only');
+      return false;
+    }
+    if(!supabaseConfigured||!supabase||!currentAccount?.session_token){
+      setToast('Global save failed: Supabase is not connected');
+      return false;
+    }
+    try{
+      const {error}=await supabase.rpc('ambi_admin_set_app_setting',{p_session_token:currentAccount.session_token,p_setting_key:settingKey,p_setting_value:String(settingValue)});
+      if(error)throw error;
+      const next={...appVersionSettings};
+      if(settingKey==='latest_apk_version')next.latestApkVersion=String(settingValue);
+      if(settingKey==='minimum_apk_version_code')next.minimumApkVersionCode=String(settingValue);
+      if(settingKey==='latest_apk_download_url')next.latestApkDownloadUrl=String(settingValue);
+      if(settingKey==='apk_release_notes')next.apkReleaseNotes=String(settingValue);
+      setAppVersionSettings(next);
+      localStorage.setItem('ambiAppVersionSettingsV21',JSON.stringify(next));
+      setToast('APK setting saved globally');
+      return true;
+    }catch(error){
+      setToast('Global APK setting save failed');
+      if(import.meta.env.DEV){console.warn('AMBI APK setting save failed:',error?.message||error);}
+      return false;
+    }
+  }
+
+  const versionBlocked=nativeApp && Number(appVersionSettings.minimumApkVersionCode||0)>AMBI_APP_VERSION_CODE;
 
   useEffect(()=>{let handle;CapacitorApp.addListener('backButton',()=>{const current=pageRef.current;if(current&&current!=='home'){setPage('home');return}const now=Date.now();if(now-lastBackRef.current<2000){CapacitorApp.exitApp();return}lastBackRef.current=now;setToast('Press back again to exit')}).then(h=>{handle=h}).catch(()=>{});return()=>{if(handle&&handle.remove)handle.remove()}},[]);
   useEffect(()=>localStorage.setItem('ambiMembersRealV2',JSON.stringify(members)),[members]);
@@ -1717,7 +1770,22 @@ function App(){
 
   const locked=!loggedIn;
 
-  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer>{showBottomNav&&<div className="bottom"><button onClick={()=>loggedIn?setPage('home'):setPage('login')}><Home/>Home</button><button onClick={()=>loggedIn?setPage('directory'):setPage('login')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>loggedIn?setPage('submit'):setPage('login')}><Plus/></button><button onClick={()=>loggedIn?setPage('calendar'):setPage('login')}><CalendarDays/>Calendar</button><button onClick={()=>loggedIn?setPage('profile'):setPage('login')}><UserCircle/>Profile</button></div>}{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer>{showBottomNav&&<div className="bottom"><button onClick={()=>loggedIn?setPage('home'):setPage('login')}><Home/>Home</button><button onClick={()=>loggedIn?setPage('directory'):setPage('login')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>loggedIn?setPage('submit'):setPage('login')}><Plus/></button><button onClick={()=>loggedIn?setPage('calendar'):setPage('login')}><CalendarDays/>Calendar</button><button onClick={()=>loggedIn?setPage('profile'):setPage('login')}><UserCircle/>Profile</button></div>}{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>
+}
+
+
+function ApkUpdateRequired({appVersionSettings}){
+  return <section className="pageHero apkUpdateRequired">
+    <p className="eyebrow">Update required</p>
+    <h1>AMBI app update required</h1>
+    <p>Your installed APK version is no longer allowed to sync. Please install the latest AMBI APK from the official admin link.</p>
+    <div className="settingExplain">
+      <b>Current app version: {AMBI_APP_VERSION}</b>
+      <small>Latest version: {appVersionSettings.latestApkVersion||'Not set'} • Minimum code: {appVersionSettings.minimumApkVersionCode||'0'}</small>
+    </div>
+    {appVersionSettings.apkReleaseNotes&&<p>{appVersionSettings.apkReleaseNotes}</p>}
+    {appVersionSettings.latestApkDownloadUrl&&<a className="apkDownloadBtn" href={appVersionSettings.latestApkDownloadUrl} target="_blank" rel="noreferrer">Download latest APK</a>}
+  </section>
 }
 
 function LoginPage({onLogin}){
@@ -1860,12 +1928,13 @@ function PasswordChangeBox({currentAccount,changePassword}){
 function Profile({member,edit,contacts=[],loggedIn=true,logout,login,activity=[],currentAccount,changePassword}){if(!loggedIn){return <section className="pageHero profileLogin"><p className="eyebrow">Member profile</p><h1>You are logged out.</h1><p>Log in to view your name, details, visiting card, contacts, connections and activity history.</p><button onClick={login}><UserCircle/> Log in as member</button></section>}if(!member)return <section className="pageHero"><h1>Profile not found</h1></section>;const history=[...activity,{id:'profile-update',type:'Profile',title:'Digital visiting card ready',status:'Completed',date:'Today',approvedBy:member.approvedBy||'Committee Admin'}];const ads=history.filter(h=>/ad|advertisement|promotion|poster|announcement/i.test(`${h.type} ${h.title}`));return <><section className="profileCover profileCoverClean"><Avatar m={member} big/><div className="profileTitleBlock"><p className="eyebrow">My verified profile</p><h1>{member.name}</h1><p>{member.position||'Member'} • {member.company}</p><p className="profileApproved">Verified by {member.approvedBy||'Committee Admin'}</p></div><button className="logoutBtn" onClick={logout}>Logout</button></section><section className="profileDashboard"><div className="profileMain"><div className="panel profileDetailsCard"><div className="sectionHead"><div><p className="eyebrow">Your details</p><h2>Member information</h2></div><button onClick={()=>edit(member)}><Edit3/> Edit profile</button></div><div className="profileInfoRows"><p><b>Name</b><span>{member.name}</span></p><p><b>Company</b><span>{member.company}</span></p><p><b>Position</b><span>{member.position||'Member'}</span></p><p><b>Category</b><span>{member.category}</span></p><p><b>Email</b><span>{member.email||'Not provided'}</span></p><p><b>Phone</b><span>{member.phone||'Hidden or not provided'}</span></p><p><b>Address</b><span>{member.address||'Not provided'}</span></p></div><h2>About</h2><p>{member.about||'Business profile introduction will appear here.'}</p><h2>Services</h2><div className="chips">{(member.services||member.category||'Member').split(',').map(x=><span key={x}>{x.trim()}</span>)}</div></div><div className="panel"><div className="sectionHead"><div><p className="eyebrow">History</p><h2>Your activity</h2></div><span className="historyCount">{history.length}</span></div><div className="historyList">{history.map(h=><div key={h.id} className="historyItem"><div><b>{h.title}</b><small>{h.type} • {h.date}</small></div><span className={h.status==='Approved'||h.status==='Completed'?'ok':'wait'}>{h.status}</span></div>)}</div></div></div><aside className="profileSide"><div className="vcard profileVcard"><div className="vfront"><Avatar m={member}/><h2>{member.name}</h2><p>{member.company}</p><small>{member.email||'Email not provided'}</small><small>{member.phone||'Phone hidden'}</small></div><div className="vback"><h3>Services</h3><p>{member.services||member.category}</p><button><Share2/> Share digital card</button><button><Download/> Download card</button></div></div>{changePassword&&<PasswordChangeBox currentAccount={currentAccount} changePassword={changePassword}/>}<div className="panel profileMiniPanel"><p className="eyebrow">Contacts</p><h2>Who you contacted</h2>{contacts.length?contacts.map(c=><div className="contactRow" key={c.id}><b>{c.name}</b><small>{c.company} • {c.date}</small></div>):<p className="mutedText">No contact history yet. Open a member from Directory to add them here.</p>}</div><div className="panel profileMiniPanel"><p className="eyebrow">Connections & posts</p><h2>Summary</h2><div className="profileStats"><div><b>{contacts.length}</b><span>Contacts</span></div><div><b>{Math.max(contacts.length-1,0)}</b><span>Connections</span></div><div><b>{ads.length}</b><span>Ads / posts</span></div></div></div></aside></section></>}
 
 
-function Management({members=[],events=[],setPage,currentAccount,webFooterEnabled=false,updateWebFooterSetting=()=>{},nativeApp=false}){
+function Management({members=[],events=[],setPage,currentAccount,webFooterEnabled=false,updateWebFooterSetting=()=>{},nativeApp=false,appVersionSettings={},updateAppSetting=async()=>false}){
   const [accounts,setAccounts]=useState([]);
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
   const [loginDraft,setLoginDraft]=useState({memberId:'',username:'',password:'123456',role:'member'});
   const [roleDraft,setRoleDraft]=useState({accountId:'',role:'level1_admin'});
+  const [apkDraft,setApkDraft]=useState({latestApkVersion:appVersionSettings.latestApkVersion||'21.5.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''});
   const role=currentAccount?.role || 'member';
   const canCreate=canCreateMemberLogin(role);
   const canAssign=canAssignAdminRoles(role);
@@ -1877,6 +1946,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   const supers=accounts.filter(a=>a.role==='super_admin');
   const selectedRoleAccount=accounts.find(a=>a.account_id===roleDraft.accountId);
   useEffect(()=>{loadAccounts()},[currentAccount?.session_token]);
+  useEffect(()=>{setApkDraft({latestApkVersion:appVersionSettings.latestApkVersion||'21.5.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''})},[appVersionSettings.latestApkVersion,appVersionSettings.minimumApkVersionCode,appVersionSettings.latestApkDownloadUrl,appVersionSettings.apkReleaseNotes]);
   useEffect(()=>{if(!loginDraft.memberId&&membersWithoutAccounts[0]){setLoginDraft(d=>({...d,memberId:membersWithoutAccounts[0].id}))}},[membersWithoutAccounts.length]);
   useEffect(()=>{if(!roleDraft.accountId&&accounts[0]){setRoleDraft(d=>({...d,accountId:accounts[0].account_id}))}},[accounts.length]);
   async function loadAccounts(){
@@ -1935,6 +2005,19 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
       await loadAccounts();
     }catch(error){setMsg(error?.message||'Account update failed.')}finally{setBusy(false)}
   }
+  async function saveApkSettings(e){
+    e.preventDefault();
+    if(!canAssign){setMsg('Super Admin only.');return;}
+    setBusy(true);
+    try{
+      const ok1=await updateAppSetting('latest_apk_version',apkDraft.latestApkVersion.trim()||'21.5.0');
+      const ok2=await updateAppSetting('minimum_apk_version_code',String(apkDraft.minimumApkVersionCode||'0').trim()||'0');
+      const ok3=await updateAppSetting('latest_apk_download_url',apkDraft.latestApkDownloadUrl.trim());
+      const ok4=await updateAppSetting('apk_release_notes',apkDraft.apkReleaseNotes.trim());
+      if(ok1&&ok2&&ok3&&ok4){setMsg('APK release settings saved globally.');}
+    }finally{setBusy(false)}
+  }
+
   const roleOptions=[
     ['member','Member'],
     ['level1_admin','Level 1 Admin'],
@@ -1971,6 +2054,36 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
         <small>{nativeApp?'You are currently inside the Android app, so the footer remains visible regardless of this setting.':'You are currently in a browser/web preview, so this global Supabase setting controls whether the bottom footer appears for all web users.'}</small>
       </div>
       {!canAssign&&<small className="mutedText">Super Admin only can change this setting.</small>}
+    </section>
+    <section className="panel adminSettingPanel apkControlPanel">
+      <div className="sectionHead">
+        <div>
+          <p className="eyebrow">APK release control</p>
+          <h2>Private app version gate</h2>
+          <p className="mutedText">Use this to control future APK updates. Website users are not blocked. Android APK users can be asked to update when the minimum version code is higher than the installed app.</p>
+        </div>
+      </div>
+      <form onSubmit={saveApkSettings} className="apkSettingsForm">
+        <div className="two">
+          <label>Latest APK version
+            <input value={apkDraft.latestApkVersion} onChange={e=>setApkDraft({...apkDraft,latestApkVersion:e.target.value})} disabled={!canAssign||busy} placeholder="21.5.0"/>
+          </label>
+          <label>Minimum allowed version code
+            <input value={apkDraft.minimumApkVersionCode} onChange={e=>setApkDraft({...apkDraft,minimumApkVersionCode:e.target.value.replace(/[^0-9]/g,'')})} disabled={!canAssign||busy} placeholder="21500"/>
+          </label>
+        </div>
+        <label>Latest APK download link
+          <input value={apkDraft.latestApkDownloadUrl} onChange={e=>setApkDraft({...apkDraft,latestApkDownloadUrl:e.target.value})} disabled={!canAssign||busy} placeholder="https://your-site.com/download/AMBI-v21-5.apk"/>
+        </label>
+        <label>Release notes
+          <textarea value={apkDraft.apkReleaseNotes} onChange={e=>setApkDraft({...apkDraft,apkReleaseNotes:e.target.value})} disabled={!canAssign||busy} placeholder="What's new in this APK?"/>
+        </label>
+        <div className="settingExplain">
+          <b>This installed build: {AMBI_APP_VERSION} / code {AMBI_APP_VERSION_CODE}</b>
+          <small>Set minimum allowed version code above {AMBI_APP_VERSION_CODE} only when you want older APKs to stop syncing and show an update screen.</small>
+        </div>
+        <button type="submit" disabled={!canAssign||busy}><Save size={18}/> Save APK release settings</button>
+      </form>
     </section>
     <section className="builder submitClean">
       <form onSubmit={createLogin}>
