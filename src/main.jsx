@@ -1689,37 +1689,104 @@ function LoginPage({onLogin}){
   return <><section className="pageHero profileLogin"><p className="eyebrow">Members only</p><h1>AMBI member login</h1><p>This APK can be opened by anyone, but live directory, calendar, RSVP and submissions only unlock for admin-approved AMBI members.</p></section><section className="builder submitClean"><form onSubmit={submit}><label>Username / Member ID<input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Example: hemanta" autoCapitalize="none"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Temporary or changed password"/></label><button type="submit" disabled={busy}><UserCircle/>{busy?'Checking...':'Log in'}</button>{error&&<div className="successMsg">{error}</div>}<p className="mutedText">No public sign-up. Admin creates your username and temporary password. Contact AMBI admin if you need access or password reset.</p></form><aside className="preview"><h2>Controlled access</h2><div className="contentPreviewCard"><span>Approved members only</span><h3>APK sharing is safe</h3><p>People may install the APK, but without an approved username and password they cannot access live member data.</p><small>Admin-controlled login</small></div></aside></section></>
 }
 
+
+function postThemeClass(kind=''){
+  const value=String(kind).toLowerCase();
+  if(value.includes('business')) return 'post-business';
+  if(value.includes('advertisement')) return 'post-advertisement';
+  if(value.includes('announcement')) return 'post-announcement';
+  if(value.includes('event')) return 'post-event';
+  return 'post-notice';
+}
+
 function HomePage({members,calendarEvents=[],posts=[],setPage,openProfile,currentRole='member',onBlockPost,onDeletePost}){
   const [activePost,setActivePost]=useState(null);
-  const visiblePosts=(posts||[]).filter(p=>!p.blocked).sort((a,b)=>(b.pinned===true)-(a.pinned===true)||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
-  const featuredPosts=visiblePosts.slice(0,6);
-  const upcoming=(calendarEvents||[]).filter(e=>!e.blocked).slice(0,5);
+  const visiblePosts=(posts||[])
+    .filter(p=>!p.blocked)
+    .sort((a,b)=>(b.pinned===true)-(a.pinned===true)||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  const demoPosts=[
+    {id:'demo-business',kind:'Business Offer',title:'Strategic partnership opportunity',summary:'We are looking for strategic partners for our upcoming project in the healthcare sector.',createdBy:'Medilife Pvt. Ltd.',company:'',createdAt:'2h ago'},
+    {id:'demo-ad',kind:'Advertisement',title:'Special discount on our services',summary:'Exclusive 20% discount for AMBI members this month.',createdBy:'Tech Solutions',company:'',createdAt:'5h ago'},
+    {id:'demo-notice',kind:'Notice',title:'Monthly Members Meeting',summary:'Monthly members meeting on 25th May 2026 at 4:00 PM.',createdBy:'AMBI Admin',company:'',createdAt:'1d ago'},
+    {id:'demo-ann',kind:'Announcement',title:'New Member Welcome',summary:'Welcome our new members who joined this month.',createdBy:'AMBI Team',company:'',createdAt:'2d ago'}
+  ];
+  const boardPosts=visiblePosts.length?visiblePosts.slice(0,8):demoPosts;
+  const heroPost=boardPosts[0];
+  const upcoming=(calendarEvents||[]).filter(e=>!e.blocked).slice(0,4);
   const isAdmin=canModerate(currentRole);
   const sectorCount=new Set(members.map(m=>m.category)).size;
   const openPost=(post)=>setActivePost(post);
   return <>
     <style>{`
-      .homeCompactHero{max-width:1180px;margin:22px auto 14px;padding:28px 34px;border-radius:28px;background:linear-gradient(135deg,#173d2a,#172f4d 82%);color:#fff;display:grid;grid-template-columns:1fr auto;gap:22px;align-items:center;box-shadow:0 20px 45px rgba(0,0,0,.12)}
-      .homeCompactHero .eyebrow{color:#c6a84d;margin:0 0 8px}.homeCompactHero h1{font-size:clamp(32px,5vw,54px);line-height:.95;margin:0 0 10px;max-width:760px}.homeCompactHero p{max-width:760px;color:rgba(255,255,255,.82);font-size:15px;line-height:1.55;margin:0 0 16px}.homeCompactHero .heroActions{margin:0;display:flex;gap:10px;flex-wrap:wrap}.homeCompactHero .heroActions button{min-height:42px;padding:10px 16px;border-radius:14px}.homeHeroMiniCard{width:150px;border-radius:22px;background:rgba(255,255,255,.92);color:#214e33;text-align:center;padding:18px 14px}.homeHeroMiniCard img{width:72px;height:72px;object-fit:contain}.homeHeroMiniCard b{display:block;font-size:38px;line-height:1}.homeHeroMiniCard span{font-weight:800;font-size:11px;color:#647269}.homeQuickStats{max-width:1180px;margin:0 auto 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.homeQuickStats div{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:18px;padding:12px 15px;box-shadow:0 10px 28px rgba(0,0,0,.06)}.homeQuickStats b{display:block;font-size:24px;color:#285d3b}.homeQuickStats span{display:block;font-size:12px;font-weight:800;color:#66736b}.noticeBoardPanel{max-width:1180px;margin:18px auto;padding:24px;border-radius:26px;background:#fff;border:1px solid rgba(0,0,0,.07);box-shadow:0 16px 42px rgba(0,0,0,.07)}.noticeBoardGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.noticeCardWide{width:100%;min-height:156px;border:1px solid rgba(0,0,0,.08);border-radius:22px;background:linear-gradient(180deg,#fff,#fbfaf6);padding:18px;text-align:left;display:grid;grid-template-columns:96px 1fr auto;gap:16px;align-items:center;cursor:pointer;box-shadow:0 10px 24px rgba(0,0,0,.04);transition:.18s ease}.noticeCardWide:hover{transform:translateY(-2px);box-shadow:0 16px 32px rgba(0,0,0,.08);border-color:#c6a84d}.noticeBadge{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.14em;color:#9a7a22;background:#f7f0d8;border-radius:999px;padding:8px 10px;display:inline-flex;justify-content:center;align-items:center;text-align:center}.noticeCardWide h3{font-size:22px;line-height:1.05;margin:0 0 8px;color:#16241d}.noticeCardWide p{font-size:14px;line-height:1.45;color:#647269;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.noticeMeta{display:block;font-size:12px;font-weight:800;color:#285d3b}.noticeThumb{width:76px;height:76px;border-radius:18px;object-fit:cover;background:#eef5ef}.noticeOpen{font-size:12px;font-weight:900;color:#285d3b;white-space:nowrap}.postModalBackdrop{position:fixed;inset:0;background:rgba(7,16,12,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}.postModal{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:30px;padding:28px;box-shadow:0 28px 80px rgba(0,0,0,.28)}.postModalHead{display:flex;justify-content:space-between;gap:16px;align-items:start}.postModal h2{font-size:clamp(30px,5vw,50px);line-height:.98;margin:8px 0 12px}.postModal p{font-size:16px;line-height:1.6;color:#516058}.postModal img{width:100%;max-height:380px;object-fit:cover;border-radius:22px;margin:14px 0}.postModalActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.postModalActions button,.postClose{border:0;border-radius:14px;background:#285d3b;color:white;font-weight:900;padding:10px 14px}.postClose{background:#f0f4ef;color:#285d3b}.homeCalendarList{display:grid;gap:10px}.homeCalendarList .notice{margin:0}.homeFeaturedMembers{margin-bottom:80px}@media(max-width:820px){.homeCompactHero{grid-template-columns:1fr;padding:22px;margin:14px 12px}.homeHeroMiniCard{display:none}.homeQuickStats{grid-template-columns:repeat(2,1fr);margin:0 12px}.noticeBoardPanel{margin:14px 12px;padding:18px}.noticeBoardGrid{grid-template-columns:1fr}.noticeCardWide{grid-template-columns:1fr auto;gap:10px}.noticeBadge{justify-self:start}.noticeThumb{display:none}.noticeOpen{align-self:end}.homeCompactHero h1{font-size:35px}}
+      .premiumHome{max-width:1180px;margin:0 auto 88px;padding:18px 16px 0;color:#0b1410}
+      .premiumHero{position:relative;overflow:hidden;border-radius:22px;min-height:286px;padding:32px;background:linear-gradient(110deg,rgba(3,43,27,.98) 0%,rgba(8,60,42,.96) 45%,rgba(17,36,75,.72) 100%),url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80');background-size:cover;background-position:center right;box-shadow:0 18px 45px rgba(0,0,0,.18);display:flex;flex-direction:column;justify-content:space-between}
+      .premiumHero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(198,168,77,.18),transparent 28%),linear-gradient(90deg,rgba(2,28,18,.3),transparent);pointer-events:none}
+      .premiumHeroContent{position:relative;z-index:2;max-width:560px}
+      .premiumHeroTag{display:inline-flex;align-items:center;gap:8px;border-radius:999px;background:#244A8F;color:white;padding:9px 13px;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px}
+      .premiumHeroTag.business{background:#1E4735}.premiumHeroTag.advertisement{background:#C7771A}.premiumHeroTag.announcement{background:#5A2E8A}
+      .premiumHero h1{font-size:clamp(36px,5vw,58px);line-height:.96;color:white;margin:0 0 18px;letter-spacing:-.04em;text-shadow:0 2px 18px rgba(0,0,0,.18)}
+      .premiumHeroMeta{font-weight:700;color:rgba(255,255,255,.86);margin-bottom:18px}
+      .premiumHeroBtn{border:0;border-radius:10px;background:white;color:#101820;padding:13px 18px;font-weight:900;display:inline-flex;align-items:center;gap:12px;box-shadow:0 12px 26px rgba(0,0,0,.2)}
+      .premiumHeroDots{position:absolute;z-index:2;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px}.premiumHeroDots span{width:9px;height:9px;border-radius:50%;border:2px solid rgba(255,255,255,.86)}.premiumHeroDots span:first-child{background:white}
+      .premiumCreateRow{display:flex;justify-content:flex-end;margin:16px 0}.premiumCreateBtn{border:0;border-radius:10px;background:#0f5132;color:white;padding:13px 24px;font-weight:900;font-size:16px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 14px 28px rgba(15,81,50,.24)}
+      .premiumStats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.premiumStat{background:white;border:1px solid rgba(15,23,32,.08);border-radius:16px;min-height:112px;padding:22px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 28px rgba(0,0,0,.07)}.premiumStatIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:white;background:#1E4735}.premiumStat:nth-child(2) .premiumStatIcon{background:#C59D3D}.premiumStat:nth-child(3) .premiumStatIcon{background:#244A8F}.premiumStat:nth-child(4) .premiumStatIcon{background:#5A2E8A}.premiumStat b{display:block;font-family:'Playfair Display',Georgia,serif;font-size:40px;line-height:1;color:#0F1720}.premiumStat span{font-weight:800;color:#0F1720}.premiumStat small{display:block;margin-top:6px;color:#56616D}
+      .premiumNoticeHead{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}.premiumNoticeHead h2{font-family:Inter,system-ui,sans-serif;font-size:18px;letter-spacing:.12em;text-transform:uppercase;margin:0;color:#101820;font-weight:900;border-left:5px solid #1E4735;padding-left:14px}.premiumNoticeHead button{border:0;background:transparent;color:#0f5132;font-weight:900;display:flex;align-items:center;gap:8px}
+      .premiumBoard{display:grid;gap:12px}.premiumPost{position:relative;overflow:hidden;border:1px solid rgba(15,23,32,.08);background:white;border-radius:16px;min-height:118px;display:grid;grid-template-columns:112px 1fr 180px 34px;align-items:center;text-align:left;padding:0 18px 0 0;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 28px rgba(0,0,0,.07);transition:180ms ease}.premiumPost:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.06),0 16px 40px rgba(0,0,0,.10)}
+      .postIconBox{height:100%;min-height:118px;display:grid;place-items:center;color:white;background:#244A8F}.postIconBox svg{width:38px;height:38px}.post-business .postIconBox{background:#1E4735}.post-advertisement .postIconBox{background:#C7771A}.post-announcement .postIconBox{background:#5A2E8A}.post-event .postIconBox{background:#244A8F}
+      .premiumPostMain{padding:18px 18px}.premiumBadge{display:inline-flex;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;background:#e9f0ff;color:#244A8F;margin-bottom:8px}.post-business .premiumBadge{background:#eaf4ee;color:#1E4735}.post-advertisement .premiumBadge{background:#fff1df;color:#C7771A}.post-announcement .premiumBadge{background:#f2eaff;color:#5A2E8A}
+      .premiumPost h3{margin:0 0 6px;font-size:19px;line-height:1.12;color:#0F1720;font-weight:900}.premiumPost p{margin:0;color:#3f4a45;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.premiumAuthor{text-align:right;color:#0F1720;font-weight:800}.premiumAuthor small{display:block;margin-top:8px;color:#6b7470;font-weight:600}.premiumArrow{color:#0F1720;display:grid;place-items:center}
+      .postModalBackdrop{position:fixed;inset:0;background:rgba(7,16,12,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}.postModal{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:28px;box-shadow:0 28px 80px rgba(0,0,0,.28)}.postModalHead{display:flex;justify-content:space-between;gap:16px;align-items:start}.postModal h2{font-size:clamp(30px,5vw,50px);line-height:.98;margin:8px 0 12px}.postModal p{font-size:16px;line-height:1.6;color:#516058}.postModal img{width:100%;max-height:380px;object-fit:cover;border-radius:16px;margin:14px 0}.postModalActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.postModalActions button,.postClose{border:0;border-radius:10px;background:#285d3b;color:white;font-weight:900;padding:10px 14px}.postClose{background:#f0f4ef;color:#285d3b}
+      @media(max-width:820px){.premiumHome{padding:12px 14px 0}.premiumHero{min-height:220px;padding:22px;border-radius:18px}.premiumHero h1{font-size:35px}.premiumHeroMeta{font-size:13px}.premiumCreateRow{margin:14px 0}.premiumStats{grid-template-columns:repeat(4,1fr);gap:8px}.premiumStat{min-height:88px;padding:12px 8px;display:block;text-align:center;border-radius:14px}.premiumStatIcon{width:40px;height:40px;margin:0 auto 8px}.premiumStat b{font-size:30px}.premiumStat span{font-size:12px}.premiumStat small{display:none}.premiumPost{grid-template-columns:82px 1fr 20px;min-height:112px;padding-right:10px}.postIconBox{min-height:112px}.premiumAuthor{display:none}.premiumPostMain{padding:14px}.premiumPost h3{font-size:17px}.premiumNoticeHead h2{font-size:15px}.premiumHeroDots{bottom:16px}}
     `}</style>
-    <section className="homeCompactHero">
-      <div>
-        <p className="eyebrow">Business Excellence Group • Since 2017</p>
-        <h1>AMBI member network.</h1>
-        <p>Notices, opportunities, business posts and calendar updates in one members-only space.</p>
-        <div className="heroActions"><button onClick={()=>setPage('directory')}>Explore Directory <ChevronRight/></button><button onClick={()=>setPage('submit')}>Post Notice <Plus/></button></div>
+
+    <main className="premiumHome">
+      <section className="premiumHero">
+        <div className="premiumHeroContent">
+          <span className={`premiumHeroTag ${postThemeClass(heroPost?.kind||'Notice').replace('post-','')}`}>{heroPost?.kind || 'Notice'}</span>
+          <h1>{heroPost?.title || 'Welcome to AMBI member updates'}</h1>
+          <div className="premiumHeroMeta">Posted by {heroPost?.createdBy || 'AMBI Admin'} {heroPost?.createdAt?` • ${heroPost.createdAt}`:''}</div>
+          <button className="premiumHeroBtn" onClick={()=>heroPost?openPost(heroPost):setPage('submit')}>View Notice <ChevronRight size={18}/></button>
+        </div>
+        <div className="premiumHeroDots"><span></span><span></span><span></span><span></span></div>
+      </section>
+
+      <div className="premiumCreateRow">
+        <button className="premiumCreateBtn" onClick={()=>setPage('submit')}><Plus size={22}/> Create Post</button>
       </div>
-      <div className="homeHeroMiniCard"><img src="/ambi-logo.png"/><b>{members.length}</b><span>approved members</span></div>
-    </section>
-    <section className="homeQuickStats"><div><b>{members.length}</b><span>Members</span></div><div><b>{sectorCount}</b><span>Sectors</span></div><div><b>{visiblePosts.length}</b><span>Posts</span></div><div><b>{calendarEvents.filter(e=>!e.blocked).length}</b><span>Events</span></div></section>
-    <section className="noticeBoardPanel">
-      <div className="sectionHead"><div><p className="eyebrow">Live notice board</p><h2>Member posts, advertisements and important updates</h2></div><button onClick={()=>setPage('submit')}><Plus/>Post</button></div>
-      <div className="noticeBoardGrid">{featuredPosts.length?featuredPosts.map(post=><button className="noticeCardWide" key={post.id} onClick={()=>openPost(post)}><span className="noticeBadge">{post.kind}</span><div><h3>{post.title}</h3><p>{post.summary}</p><small className="noticeMeta">{post.createdBy}{post.company?` • ${post.company}`:''}</small></div>{post.asset&&post.asset.type?.startsWith('image/')?<img className="noticeThumb" src={post.asset.src}/>:<span className="noticeOpen">View details</span>}</button>):<div className="contentPreviewCard"><span>Notice Board</span><h3>No member posts yet</h3><p>Member notices and advertisements will appear here immediately after posting.</p></div>}</div>
-    </section>
-    <section className="panel"><div className="sectionHead"><h2>Upcoming calendar items</h2><button onClick={()=>setPage('calendar')}>Open Calendar</button></div><div className="homeCalendarList">{upcoming.map(ev=><div className="notice" key={ev.id}><CalendarDays/><div><h3>{ev.title}</h3><p>{eventKeyDate(ev)} · {ev.time} · {ev.location}</p></div></div>)}</div></section>
-    <section className="panel homeFeaturedMembers"><div className="sectionHead"><h2>Featured members</h2><button onClick={()=>setPage('directory')}>View all</button></div><div className="memberGrid">{members.slice(0,4).map(m=><MemberCard key={m.id} m={m} openProfile={openProfile}/>)}</div></section>
-    {activePost&&<div className="postModalBackdrop" onClick={()=>setActivePost(null)}><article className="postModal" onClick={e=>e.stopPropagation()}><div className="postModalHead"><span className="noticeBadge">{activePost.kind}</span><button className="postClose" onClick={()=>setActivePost(null)}>Close</button></div><h2>{activePost.title}</h2><p>{activePost.summary}</p>{activePost.asset&&activePost.asset.type?.startsWith('image/')&&<img src={activePost.asset.src}/>} {activePost.asset&&!activePost.asset.type?.startsWith('image/')&&<p><b>Attachment:</b> {activePost.asset.name}</p>} {activePost.details&&<p>{activePost.details}</p>}<small className="noticeMeta">Posted by {activePost.createdBy}{activePost.company?` • ${activePost.company}`:''}</small><div className="postModalActions">{activePost.kind==='Event Notice'&&<button onClick={()=>{setActivePost(null);setPage('calendar')}}>Open Calendar</button>}{isAdmin&&<><button onClick={()=>{onBlockPost?.(activePost.id);setActivePost(null)}}>Block</button><button onClick={()=>{onDeletePost?.(activePost.id);setActivePost(null)}}>Delete</button></>}</div></article></div>}
+
+      <section className="premiumStats">
+        <div className="premiumStat"><span className="premiumStatIcon"><Users size={24}/></span><div><b>{members.length}</b><span>Members</span><small>Active community</small></div></div>
+        <div className="premiumStat"><span className="premiumStatIcon"><Building2 size={24}/></span><div><b>{sectorCount}</b><span>Sectors</span><small>Business categories</small></div></div>
+        <div className="premiumStat"><span className="premiumStatIcon"><Save size={24}/></span><div><b>{visiblePosts.length}</b><span>Posts</span><small>New this week</small></div></div>
+        <div className="premiumStat"><span className="premiumStatIcon"><CalendarDays size={24}/></span><div><b>{calendarEvents.filter(e=>!e.blocked).length}</b><span>Events</span><small>Upcoming events</small></div></div>
+      </section>
+
+      <div className="premiumNoticeHead">
+        <h2>Live Notice Board</h2>
+        <button onClick={()=>setPage('submit')}>View all <ChevronRight size={18}/></button>
+      </div>
+
+      <section className="premiumBoard">
+        {boardPosts.map(post=>{
+          const theme=postThemeClass(post.kind);
+          const Icon=theme==='post-business'?BriefcaseBusiness:theme==='post-advertisement'?Bell:theme==='post-announcement'?ShieldCheck:Bell;
+          return <button className={`premiumPost ${theme}`} key={post.id} onClick={()=>openPost(post)}>
+            <div className="postIconBox"><Icon/></div>
+            <div className="premiumPostMain">
+              <span className="premiumBadge">{post.kind}</span>
+              <h3>{post.title}</h3>
+              <p>{post.summary}</p>
+            </div>
+            <div className="premiumAuthor">by {post.createdBy||'AMBI Admin'}<small>{post.createdAt||''}</small></div>
+            <div className="premiumArrow"><ChevronRight/></div>
+          </button>
+        })}
+      </section>
+    </main>
+
+    {activePost&&<div className="postModalBackdrop" onClick={()=>setActivePost(null)}><article className="postModal" onClick={e=>e.stopPropagation()}><div className="postModalHead"><span className={`premiumBadge ${postThemeClass(activePost.kind)}`}>{activePost.kind}</span><button className="postClose" onClick={()=>setActivePost(null)}>Close</button></div><h2>{activePost.title}</h2><p>{activePost.summary}</p>{activePost.asset&&activePost.asset.type?.startsWith('image/')&&<img src={activePost.asset.src}/>} {activePost.asset&&!activePost.asset.type?.startsWith('image/')&&<p><b>Attachment:</b> {activePost.asset.name}</p>} {activePost.details&&<p>{activePost.details}</p>}<small className="noticeMeta">Posted by {activePost.createdBy}{activePost.company?` • ${activePost.company}`:''}</small><div className="postModalActions">{activePost.kind==='Event Notice'&&<button onClick={()=>{setActivePost(null);setPage('calendar')}}>Open Calendar</button>}{isAdmin&&<><button onClick={()=>{onBlockPost?.(activePost.id);setActivePost(null)}}>Block</button><button onClick={()=>{onDeletePost?.(activePost.id);setActivePost(null)}}>Delete</button></>}</div></article></div>}
   </>}
+
 
 function AboutPage(){return <><section className="pageHero"><p className="eyebrow">About the Business Excellence Group</p><h1>Built from a collective voice for business progress.</h1><p>The Business Excellence Group was created in 2017 as a common platform for young emerging business establishments, entrepreneurs and professionals to share ideas, strengthen relationships and give meaningful direction toward greater goals.</p></section><section className="stats"><div><b>2017</b><span>Founded</span></div><div><b>BEG</b><span>Registered Society, Manipur</span></div><div><b>15+</b><span>Business Sectors</span></div><div><b>SYNERGY</b><span>Business Summit</span></div></section><section className="panel story"><h2>Our journey</h2><p>In a short span of time, BEG has emerged as a forward-thinking and progressive organisation in the trade and commerce ecosystem. Government departments, institutions, trade bodies and prominent establishments recognise BEG as a growing collective of first-generation business enterprises, entrepreneurs and professionals.</p><p>What started as a rendezvous to share ideas and experiences soon grew into a vibrant network. Members represent diverse sectors including manufacturing, hospitality, healthcare, education, e-commerce, retail, automobiles, real estate, construction, IT, finance, cosmetics, FMCG, food and beverage and more.</p></section><section className="panel story"><h2>Community and economic engagement</h2><p>BEG has supported humanitarian initiatives from flood relief to COVID-19 assistance, including the distribution of food and essential items to children’s homes, de-addiction centres and differently abled centres.</p><p>To strengthen economic relationships, BEG has participated in national and international conclaves. SYNERGY, a business summit with Myanmar business delegates, created an important platform for dialogue between enterprises of Manipur and neighbouring regions.</p></section></>}
 
@@ -1926,42 +1993,77 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
   function triggerSound(){if(!sound)return;try{new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{})}catch{}}
   async function doRsvp(status){
     if(!selectedEvent)return;
-    const name=currentMember?.name||'Verified Member';
-    let updatedEvent=null;
-    setEvents(list=>list.map(ev=>{
-      if(ev.id!==selectedEvent.id)return ev;
-      const clean={...ev,attending:(ev.attending||[]).filter(n=>n!==name),maybe:(ev.maybe||[]).filter(n=>n!==name),not:(ev.not||[]).filter(n=>n!==name)};
-      const key=status==='attending'?'attending':status==='maybe'?'maybe':'not';
-      updatedEvent={...clean,[key]:[...(clean[key]||[]),name]};
-      return updatedEvent;
-    }));
-    if(supabaseConfigured&&supabase&&updatedEvent&&String(updatedEvent.id).length>20&&currentAccount?.session_token){
-      const {data,error}=await supabase.rpc('ambi_rsvp_event',{p_session_token:currentAccount.session_token,p_event_id:updatedEvent.id,p_status:status});
-      if(error&&import.meta.env.DEV)console.warn('RSVP saved locally but not in Supabase:',error.message);
-      if(data){const fresh=Array.isArray(data)?data[0]:data;if(fresh?.id){const mapped=toAppEvent(fresh);setEvents(list=>list.map(ev=>ev.id===mapped.id?mapped:ev));}}
+    if(!supabaseConfigured||!supabase){
+      alert('Backend is not connected. RSVP was not saved.');
+      return;
     }
-    triggerSound();
+    if(!currentAccount?.session_token){
+      alert('Login session missing. Please log out and log in again.');
+      return;
+    }
+    if(String(selectedEvent.id).length<=20){
+      alert('This built-in calendar item cannot save RSVP yet. Please create a live member event.');
+      return;
+    }
+    try{
+      const {data,error}=await supabase.rpc('ambi_rsvp_event',{
+        p_session_token:currentAccount.session_token,
+        p_event_id:selectedEvent.id,
+        p_status:status
+      });
+      if(error)throw error;
+      const fresh=Array.isArray(data)?data[0]:data;
+      if(!fresh?.id)throw new Error('Supabase did not return the updated RSVP.');
+      const mapped=toAppEvent(fresh);
+      setEvents(list=>list.map(ev=>ev.id===mapped.id?mapped:ev));
+      setSelectedEventId(mapped.id);
+      triggerSound();
+    }catch(error){
+      console.error('AMBI RSVP save failed:',error);
+      alert(`RSVP was not saved: ${error?.message||error}`);
+    }
   }
   async function saveEvent(){
     if(!draft.title.trim())return;
-    const ev={id:'cal-'+Date.now(),title:draft.title.trim(),date:draft.date,time:draft.time||'All day',location:draft.location||'AMBI',type:draft.type||'Member Event',createdBy:currentMember?.name||draft.createdBy||'Verified Member',source:'Member-created calendar item',attending:[],maybe:[],not:[],blocked:false};
-    let savedEvent=ev;
-    if(supabaseConfigured&&supabase){
-      try{
-        if(!currentAccount?.session_token)throw new Error('Login session missing');
-        const {data,error}=await supabase.rpc('ambi_create_event',{p_session_token:currentAccount.session_token,p_title:ev.title,p_event_date:ev.date,p_event_time:ev.time,p_location:ev.location,p_event_type:ev.type,p_description:ev.source});
-        if(error)throw error;
-        const row=Array.isArray(data)?data[0]:data;
-        savedEvent=toAppEvent(row);
-      }catch(error){
-        if(import.meta.env.DEV)console.warn('Event saved locally but not in Supabase:',error?.message||error);
-      }
+    if(!supabaseConfigured||!supabase){
+      alert('Backend is not connected. Event was not saved.');
+      return;
     }
-    setEvents(list=>[savedEvent,...list.filter(item=>item.id!==savedEvent.id)]);
-    setSelectedMonth(dateParts(savedEvent.date).month);
-    setSelectedEventId(savedEvent.id);
-    setShowCreate(false);
-    setDraft({title:'',date:savedEvent.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
+    if(!currentAccount?.session_token){
+      alert('Login session missing. Please log out and log in again.');
+      return;
+    }
+    const ev={
+      title:draft.title.trim(),
+      date:draft.date,
+      time:draft.time||'All day',
+      location:draft.location||'AMBI',
+      type:draft.type||'Member Event',
+      source:'Member-created calendar item'
+    };
+    try{
+      const {data,error}=await supabase.rpc('ambi_create_event',{
+        p_session_token:currentAccount.session_token,
+        p_title:ev.title,
+        p_event_date:ev.date,
+        p_event_time:ev.time,
+        p_location:ev.location,
+        p_event_type:ev.type,
+        p_description:ev.source
+      });
+      if(error)throw error;
+      const row=Array.isArray(data)?data[0]:data;
+      if(!row?.id)throw new Error('Supabase did not return the saved event.');
+      const savedEvent=toAppEvent(row);
+      setEvents(list=>[savedEvent,...list.filter(item=>item.id!==savedEvent.id)]);
+      setSelectedMonth(dateParts(savedEvent.date).month);
+      setSelectedEventId(savedEvent.id);
+      setShowCreate(false);
+      setDraft({title:'',date:savedEvent.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
+    }catch(error){
+      console.error('AMBI event save failed:',error);
+      alert(`Event was not saved: ${error?.message||error}`);
+    }
   }
   async function blockEvent(id){
     if(!canModerate(currentAccount?.role)){alert('Admin only');return;}
