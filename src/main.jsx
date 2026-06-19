@@ -1485,6 +1485,23 @@ function roleLabel(role){
   return role==='super_admin'?'Super Admin':role==='level2_admin'?'Level 2 Admin':role==='level1_admin'||role==='admin'?'Level 1 Admin':'Member';
 }
 
+function isNativeAMBIApp(){
+  try{
+    return !!(typeof window!=='undefined' && window.Capacitor && typeof window.Capacitor.isNativePlatform==='function' && window.Capacitor.isNativePlatform());
+  }catch{
+    return false;
+  }
+}
+
+function readStoredWebFooterSetting(){
+  try{
+    const saved=localStorage.getItem('ambiWebMobileFooterEnabled');
+    return saved===null ? false : saved==='true';
+  }catch{
+    return false;
+  }
+}
+
 function toAppEvent(row){
   return {
     id: row.id,
@@ -1566,6 +1583,9 @@ function App(){
   const [contacts,setContacts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiContactsV18'))||[]}catch{return []}});
   const [calendarEvents,setCalendarEvents]=useState(seedCalendarEvents);
   const [memberPosts,setMemberPosts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiMemberPostsV20'))||seedPosts}catch{return seedPosts}});
+  const [webFooterEnabled,setWebFooterEnabled]=useState(readStoredWebFooterSetting);
+  const nativeApp=useMemo(()=>isNativeAMBIApp(),[]);
+  const showBottomNav=nativeApp || webFooterEnabled;
   const pageRef=useRef(page);
   const lastBackRef=useRef(0);
   const historyReadyRef=useRef(false);
@@ -1584,6 +1604,32 @@ function App(){
   useEffect(()=>{let active=true;async function loadEvents(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_events',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppEvent).filter(ev=>ev.title&&ev.date);setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,mapped));}catch(error){if(import.meta.env.DEV){console.warn('AMBI events load failed. Using built-in calendar fallback.',error?.message||error);}}}loadEvents();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
   useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+
+  useEffect(()=>{let active=true;async function loadAppSettings(){if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_public_app_settings');if(error)throw error;if(!active)return;const rows=Array.isArray(data)?data:[];const footer=rows.find(row=>row.setting_key==='web_mobile_footer_enabled');if(footer){const enabled=String(footer.setting_value)==='true';setWebFooterEnabled(enabled);localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI app settings load failed. Using local setting fallback.',error?.message||error);}}}loadAppSettings();return()=>{active=false}},[]);
+
+  async function updateWebFooterSetting(enabled){
+    const previous=webFooterEnabled;
+    if(!canAssignAdminRoles(currentRole)){
+      setToast('Super Admin only');
+      return;
+    }
+    if(!supabaseConfigured||!supabase||!currentAccount?.session_token){
+      setToast('Global save failed: Supabase is not connected');
+      return;
+    }
+    setWebFooterEnabled(enabled);
+    try{
+      const {error}=await supabase.rpc('ambi_admin_set_app_setting',{p_session_token:currentAccount.session_token,p_setting_key:'web_mobile_footer_enabled',p_setting_value:String(enabled)});
+      if(error)throw error;
+      localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));
+      setToast(enabled?'Website mobile footer is ON for all web users':'Website mobile footer is OFF for all web users');
+    }catch(error){
+      setWebFooterEnabled(previous);
+      setToast('Global save failed. Check Supabase function/table.');
+      if(import.meta.env.DEV){console.warn('AMBI app setting save failed:',error?.message||error);}
+    }
+  }
+
 
   useEffect(()=>{let handle;CapacitorApp.addListener('backButton',()=>{const current=pageRef.current;if(current&&current!=='home'){setPage('home');return}const now=Date.now();if(now-lastBackRef.current<2000){CapacitorApp.exitApp();return}lastBackRef.current=now;setToast('Press back again to exit')}).then(h=>{handle=h}).catch(()=>{});return()=>{if(handle&&handle.remove)handle.remove()}},[]);
   useEffect(()=>localStorage.setItem('ambiMembersRealV2',JSON.stringify(members)),[members]);
@@ -1671,7 +1717,7 @@ function App(){
 
   const locked=!loggedIn;
 
-  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer><div className="bottom"><button onClick={()=>loggedIn?setPage('home'):setPage('login')}><Home/>Home</button><button onClick={()=>loggedIn?setPage('directory'):setPage('login')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>loggedIn?setPage('submit'):setPage('login')}><Plus/></button><button onClick={()=>loggedIn?setPage('calendar'):setPage('login')}><CalendarDays/>Calendar</button><button onClick={()=>loggedIn?setPage('profile'):setPage('login')}><UserCircle/>Profile</button></div>{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main><footer className="avit"><p>DESIGNED & DEVELOPED BY</p><h2>Av<span>i</span>T Solutions</h2><h3>Websites • Mobile Apps • Custom Software • Audio Visual Complete Solutions</h3><b>www.avitsolutions.tech</b></footer>{showBottomNav&&<div className="bottom"><button onClick={()=>loggedIn?setPage('home'):setPage('login')}><Home/>Home</button><button onClick={()=>loggedIn?setPage('directory'):setPage('login')}><Users/>Directory</button><button className="plus" aria-label="Submit" onClick={()=>loggedIn?setPage('submit'):setPage('login')}><Plus/></button><button onClick={()=>loggedIn?setPage('calendar'):setPage('login')}><CalendarDays/>Calendar</button><button onClick={()=>loggedIn?setPage('profile'):setPage('login')}><UserCircle/>Profile</button></div>}{toast&&<div className="toast"><CheckCircle2/>{toast}</div>}</div>
 }
 
 function LoginPage({onLogin}){
@@ -1814,7 +1860,7 @@ function PasswordChangeBox({currentAccount,changePassword}){
 function Profile({member,edit,contacts=[],loggedIn=true,logout,login,activity=[],currentAccount,changePassword}){if(!loggedIn){return <section className="pageHero profileLogin"><p className="eyebrow">Member profile</p><h1>You are logged out.</h1><p>Log in to view your name, details, visiting card, contacts, connections and activity history.</p><button onClick={login}><UserCircle/> Log in as member</button></section>}if(!member)return <section className="pageHero"><h1>Profile not found</h1></section>;const history=[...activity,{id:'profile-update',type:'Profile',title:'Digital visiting card ready',status:'Completed',date:'Today',approvedBy:member.approvedBy||'Committee Admin'}];const ads=history.filter(h=>/ad|advertisement|promotion|poster|announcement/i.test(`${h.type} ${h.title}`));return <><section className="profileCover profileCoverClean"><Avatar m={member} big/><div className="profileTitleBlock"><p className="eyebrow">My verified profile</p><h1>{member.name}</h1><p>{member.position||'Member'} • {member.company}</p><p className="profileApproved">Verified by {member.approvedBy||'Committee Admin'}</p></div><button className="logoutBtn" onClick={logout}>Logout</button></section><section className="profileDashboard"><div className="profileMain"><div className="panel profileDetailsCard"><div className="sectionHead"><div><p className="eyebrow">Your details</p><h2>Member information</h2></div><button onClick={()=>edit(member)}><Edit3/> Edit profile</button></div><div className="profileInfoRows"><p><b>Name</b><span>{member.name}</span></p><p><b>Company</b><span>{member.company}</span></p><p><b>Position</b><span>{member.position||'Member'}</span></p><p><b>Category</b><span>{member.category}</span></p><p><b>Email</b><span>{member.email||'Not provided'}</span></p><p><b>Phone</b><span>{member.phone||'Hidden or not provided'}</span></p><p><b>Address</b><span>{member.address||'Not provided'}</span></p></div><h2>About</h2><p>{member.about||'Business profile introduction will appear here.'}</p><h2>Services</h2><div className="chips">{(member.services||member.category||'Member').split(',').map(x=><span key={x}>{x.trim()}</span>)}</div></div><div className="panel"><div className="sectionHead"><div><p className="eyebrow">History</p><h2>Your activity</h2></div><span className="historyCount">{history.length}</span></div><div className="historyList">{history.map(h=><div key={h.id} className="historyItem"><div><b>{h.title}</b><small>{h.type} • {h.date}</small></div><span className={h.status==='Approved'||h.status==='Completed'?'ok':'wait'}>{h.status}</span></div>)}</div></div></div><aside className="profileSide"><div className="vcard profileVcard"><div className="vfront"><Avatar m={member}/><h2>{member.name}</h2><p>{member.company}</p><small>{member.email||'Email not provided'}</small><small>{member.phone||'Phone hidden'}</small></div><div className="vback"><h3>Services</h3><p>{member.services||member.category}</p><button><Share2/> Share digital card</button><button><Download/> Download card</button></div></div>{changePassword&&<PasswordChangeBox currentAccount={currentAccount} changePassword={changePassword}/>}<div className="panel profileMiniPanel"><p className="eyebrow">Contacts</p><h2>Who you contacted</h2>{contacts.length?contacts.map(c=><div className="contactRow" key={c.id}><b>{c.name}</b><small>{c.company} • {c.date}</small></div>):<p className="mutedText">No contact history yet. Open a member from Directory to add them here.</p>}</div><div className="panel profileMiniPanel"><p className="eyebrow">Connections & posts</p><h2>Summary</h2><div className="profileStats"><div><b>{contacts.length}</b><span>Contacts</span></div><div><b>{Math.max(contacts.length-1,0)}</b><span>Connections</span></div><div><b>{ads.length}</b><span>Ads / posts</span></div></div></div></aside></section></>}
 
 
-function Management({members=[],events=[],setPage,currentAccount}){
+function Management({members=[],events=[],setPage,currentAccount,webFooterEnabled=false,updateWebFooterSetting=()=>{},nativeApp=false}){
   const [accounts,setAccounts]=useState([]);
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
@@ -1908,6 +1954,24 @@ function Management({members=[],events=[],setPage,currentAccount}){
       <div><b>{accounts.length}</b><span>Login accounts</span></div>
     </section>
     {msg&&<div className="toast inlineToast"><CheckCircle2/>{msg}</div>}
+    <section className="panel adminSettingPanel">
+      <div className="sectionHead">
+        <div>
+          <p className="eyebrow">Website display</p>
+          <h2>Mobile footer visibility</h2>
+          <p className="mutedText">This controls the bottom mobile navigation only on browser/web view. Android APK keeps the footer visible.</p>
+        </div>
+        <label className="toggleSwitch">
+          <input type="checkbox" checked={!!webFooterEnabled} onChange={e=>updateWebFooterSetting(e.target.checked)} disabled={!canAssign}/>
+          <span></span>
+        </label>
+      </div>
+      <div className="settingExplain">
+        <b>{webFooterEnabled?'Website mobile footer is ON':'Website mobile footer is OFF'}</b>
+        <small>{nativeApp?'You are currently inside the Android app, so the footer remains visible regardless of this setting.':'You are currently in a browser/web preview, so this global Supabase setting controls whether the bottom footer appears for all web users.'}</small>
+      </div>
+      {!canAssign&&<small className="mutedText">Super Admin only can change this setting.</small>}
+    </section>
     <section className="builder submitClean">
       <form onSubmit={createLogin}>
         <p className="eyebrow">Step 1</p>
