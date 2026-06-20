@@ -594,3 +594,32 @@ button{transition:180ms ease}
 }
 .apkUpdateRequired{max-width:760px;text-align:left}
 .apkUpdateRequired .apkDownloadBtn{margin-top:16px}
+
+
+/* AMBI v21.6 — Final release candidate polish */
+.releaseBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+  padding:9px 12px;
+  border-radius:999px;
+  background:#eef7f1;
+  color:#1E4735;
+  border:1px solid rgba(30,71,53,.16);
+  font-weight:900;
+  font-size:12px;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+}
+input:focus,textarea:focus,select:focus{
+  outline:3px solid rgba(30,71,53,.14);
+  border-color:rgba(30,71,53,.38);
+}
+button:disabled{
+  opacity:.58;
+  cursor:not-allowed;
+}
+@media(max-width:650px){
+  .releaseBadge{font-size:10px}
+}

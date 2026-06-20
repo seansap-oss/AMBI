@@ -5,20 +5,20 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import {Menu,Home,Users,CalendarDays,Plus,UserCircle,Bell,Search,Upload,Edit3,Trash2,Save,ChevronRight,Building2,CheckCircle2,Image as ImageIcon,Download,Share2,BriefcaseBusiness,ShieldCheck,X} from 'lucide-react';
 import './styles.css';
 
-const AMBI_APP_VERSION='21.5.0';
-const AMBI_APP_VERSION_CODE=21500;
+const AMBI_APP_VERSION='21.6.0';
+const AMBI_APP_VERSION_CODE=21600;
 
 function readStoredAppVersionSettings(){
   try{
     return JSON.parse(localStorage.getItem('ambiAppVersionSettingsV21')) || {
-      latestApkVersion:'21.5.0',
+      latestApkVersion:'21.6.0',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
     };
   }catch{
     return {
-      latestApkVersion:'21.5.0',
+      latestApkVersion:'21.6.0',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
@@ -1934,7 +1934,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   const [msg,setMsg]=useState('');
   const [loginDraft,setLoginDraft]=useState({memberId:'',username:'',password:'123456',role:'member'});
   const [roleDraft,setRoleDraft]=useState({accountId:'',role:'level1_admin'});
-  const [apkDraft,setApkDraft]=useState({latestApkVersion:appVersionSettings.latestApkVersion||'21.5.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''});
+  const [apkDraft,setApkDraft]=useState({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''});
   const role=currentAccount?.role || 'member';
   const canCreate=canCreateMemberLogin(role);
   const canAssign=canAssignAdminRoles(role);
@@ -1946,7 +1946,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   const supers=accounts.filter(a=>a.role==='super_admin');
   const selectedRoleAccount=accounts.find(a=>a.account_id===roleDraft.accountId);
   useEffect(()=>{loadAccounts()},[currentAccount?.session_token]);
-  useEffect(()=>{setApkDraft({latestApkVersion:appVersionSettings.latestApkVersion||'21.5.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''})},[appVersionSettings.latestApkVersion,appVersionSettings.minimumApkVersionCode,appVersionSettings.latestApkDownloadUrl,appVersionSettings.apkReleaseNotes]);
+  useEffect(()=>{setApkDraft({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''})},[appVersionSettings.latestApkVersion,appVersionSettings.minimumApkVersionCode,appVersionSettings.latestApkDownloadUrl,appVersionSettings.apkReleaseNotes]);
   useEffect(()=>{if(!loginDraft.memberId&&membersWithoutAccounts[0]){setLoginDraft(d=>({...d,memberId:membersWithoutAccounts[0].id}))}},[membersWithoutAccounts.length]);
   useEffect(()=>{if(!roleDraft.accountId&&accounts[0]){setRoleDraft(d=>({...d,accountId:accounts[0].account_id}))}},[accounts.length]);
   async function loadAccounts(){
@@ -2028,7 +2028,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
     <section className="pageHero">
       <p className="eyebrow">Management</p>
       <h1>Admin settings</h1>
-      <p>Simple admin setup: create a login for an approved directory member, then assign Level 1, Level 2 or Super Admin access one person at a time.</p>
+      <p>Simple admin setup: create a login for an approved directory member, then assign Level 1, Level 2 or Super Admin access one person at a time.</p><div className="releaseBadge">Final release candidate • AMBI v{AMBI_APP_VERSION}</div>
     </section>
     <section className="stats">
       <div><b>{level1.length}</b><span>Level 1 admins</span></div>
@@ -2066,7 +2066,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
       <form onSubmit={saveApkSettings} className="apkSettingsForm">
         <div className="two">
           <label>Latest APK version
-            <input value={apkDraft.latestApkVersion} onChange={e=>setApkDraft({...apkDraft,latestApkVersion:e.target.value})} disabled={!canAssign||busy} placeholder="21.5.0"/>
+            <input value={apkDraft.latestApkVersion} onChange={e=>setApkDraft({...apkDraft,latestApkVersion:e.target.value})} disabled={!canAssign||busy} placeholder="21.6.0"/>
           </label>
           <label>Minimum allowed version code
             <input value={apkDraft.minimumApkVersionCode} onChange={e=>setApkDraft({...apkDraft,minimumApkVersionCode:e.target.value.replace(/[^0-9]/g,'')})} disabled={!canAssign||busy} placeholder="21500"/>
