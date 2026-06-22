@@ -5,20 +5,20 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import {Menu,Home,Users,CalendarDays,Plus,UserCircle,Bell,Search,Upload,Edit3,Trash2,Save,ChevronRight,Building2,CheckCircle2,Image as ImageIcon,Download,Share2,BriefcaseBusiness,ShieldCheck,X} from 'lucide-react';
 import './styles.css';
 
-const AMBI_APP_VERSION='21.6.1';
-const AMBI_APP_VERSION_CODE=21601;
+const AMBI_APP_VERSION='21.6.2';
+const AMBI_APP_VERSION_CODE=21602;
 
 function readStoredAppVersionSettings(){
   try{
     return JSON.parse(localStorage.getItem('ambiAppVersionSettingsV21')) || {
-      latestApkVersion:'21.6.1',
+      latestApkVersion:'21.6.2',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
     };
   }catch{
     return {
-      latestApkVersion:'21.6.1',
+      latestApkVersion:'21.6.2',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
@@ -1495,6 +1495,16 @@ function isSessionValid(account){
   return new Date(account.expires_at).getTime() > Date.now();
 }
 
+function isInvalidSessionError(error){
+  const message=String(error?.message || error?.details || error?.hint || error || '').toLowerCase();
+  return message.includes('invalid or expired session') ||
+    message.includes('expired session') ||
+    message.includes('invalid session') ||
+    message.includes('session expired') ||
+    message.includes('session_token') ||
+    message.includes('session token');
+}
+
 function adminRank(role){
   return {member:0,level1_admin:1,admin:1,level2_admin:2,super_admin:3}[role] || 0;
 }
@@ -1615,6 +1625,28 @@ function App(){
 
   const setPage=(next)=>{setPageRaw(prev=>{const target=typeof next==='function'?next(prev):next;if(target&&target!==prev){pageRef.current=target;if(historyReadyRef.current&&typeof window!=='undefined'){window.history.pushState({ambiPage:target},'',`${window.location.pathname}${window.location.search}#${target}`)}}return target||prev})};
 
+  function clearExpiredSession(message='Your login session has expired. Please log in again, then create the calendar event once more.'){
+    setCurrentAccount(null);
+    setSelected(null);
+    setContacts([]);
+    setCalendarEvents(seedCalendarEvents);
+    try{localStorage.removeItem('ambiCurrentAccountV19')}catch{}
+    setPage('login');
+    if(message)setTimeout(()=>alert(message),0);
+  }
+
+  function ensureLiveSession(){
+    if(!currentAccount?.session_token){
+      clearExpiredSession('Login session missing. Please log in again, then create the calendar event once more.');
+      return false;
+    }
+    if(!isSessionValid(currentAccount)){
+      clearExpiredSession('Your login session has expired. Please log in again, then create the calendar event once more.');
+      return false;
+    }
+    return true;
+  }
+
   useEffect(()=>{pageRef.current=page},[page]);
   useEffect(()=>{if(typeof window==='undefined')return;if(!window.history.state?.ambiPage){window.history.replaceState({ambiPage:'home'},'',`${window.location.pathname}${window.location.search}#home`)}historyReadyRef.current=true;const onPop=()=>{const target=window.history.state?.ambiPage||'home';pageRef.current=target;setPageRaw(target)};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
 
@@ -1622,11 +1654,11 @@ function App(){
 
   useEffect(()=>{if(!supabaseConfigured||!supabase){if(import.meta.env.DEV){console.warn('AMBI Supabase is not configured. Check .env.local.')}return}let active=true;supabase.auth.getSession().then(({error})=>{if(!active)return;if(error&&import.meta.env.DEV){console.warn('AMBI Supabase session check failed:',error.message)}});const {data}=supabase.auth.onAuthStateChange(()=>{});return()=>{active=false;data?.subscription?.unsubscribe?.()}},[]);
 
-  useEffect(()=>{let active=true;async function loadMembers(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_members',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);const currentMember=mapped.find(m=>m.id===currentAccount.member_id)||accountToMember(currentAccount);setSelected(currentMember);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI member directory load failed. Using local fallback.',error?.message||error);}}}loadMembers();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  useEffect(()=>{let active=true;async function loadMembers(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_members',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);const currentMember=mapped.find(m=>m.id===currentAccount.member_id)||accountToMember(currentAccount);setSelected(currentMember);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(isInvalidSessionError(error)){if(active)clearExpiredSession('Your AMBI login session has expired. Please log in again.');return;}if(import.meta.env.DEV){console.warn('AMBI member directory load failed. Using local fallback.',error?.message||error);}}}loadMembers();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
-  useEffect(()=>{let active=true;async function loadEvents(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_events',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppEvent).filter(ev=>ev.title&&ev.date);setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,mapped));}catch(error){if(import.meta.env.DEV){console.warn('AMBI events load failed. Using built-in calendar fallback.',error?.message||error);}}}loadEvents();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  useEffect(()=>{let active=true;async function loadEvents(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_events',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppEvent).filter(ev=>ev.title&&ev.date);setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,mapped));}catch(error){if(isInvalidSessionError(error)){if(active)clearExpiredSession('Your AMBI login session has expired. Please log in again.');return;}if(import.meta.env.DEV){console.warn('AMBI events load failed. Using built-in calendar fallback.',error?.message||error);}}}loadEvents();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
-  useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(isInvalidSessionError(error)){if(active)clearExpiredSession('Your AMBI login session has expired. Please log in again.');return;}if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
   useEffect(()=>{let active=true;async function loadAppSettings(){if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_public_app_settings');if(error)throw error;if(!active)return;const rows=Array.isArray(data)?data:[];const read=(key,fallback='')=>{const found=rows.find(row=>row.setting_key===key);return found?String(found.setting_value):fallback};const footer=rows.find(row=>row.setting_key==='web_mobile_footer_enabled');if(footer){const enabled=String(footer.setting_value)==='true';setWebFooterEnabled(enabled);localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));}const nextVersionSettings={latestApkVersion:read('latest_apk_version','21.5.0'),minimumApkVersionCode:read('minimum_apk_version_code','0'),latestApkDownloadUrl:read('latest_apk_download_url',''),apkReleaseNotes:read('apk_release_notes','')};setAppVersionSettings(nextVersionSettings);localStorage.setItem('ambiAppVersionSettingsV21',JSON.stringify(nextVersionSettings));}catch(error){if(import.meta.env.DEV){console.warn('AMBI app settings load failed. Using local setting fallback.',error?.message||error);}}}loadAppSettings();return()=>{active=false}},[]);
 
@@ -1770,7 +1802,7 @@ function App(){
 
   const locked=!loggedIn;
 
-  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount} onSessionExpired={clearExpiredSession}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
 <footer className="avit">
   <p>DESIGNED &amp; DEVELOPED BY</p>
   <h2>Av<span>i</span>T Solutions</h2>
@@ -2161,7 +2193,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   </>
 }
 
-function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount}){
+function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount,onSessionExpired}){
   const todayMonth=5;
   const [view,setView]=useState('month');
   const [sound,setSound]=useState(true);
@@ -2190,8 +2222,8 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       alert('Backend is not connected. RSVP was not saved.');
       return;
     }
-    if(!currentAccount?.session_token){
-      alert('Login session missing. Please log out and log in again.');
+    if(!currentAccount?.session_token || !isSessionValid(currentAccount)){
+      onSessionExpired?.('Your login session has expired. Please log in again, then create the calendar event once more.');
       return;
     }
     if(String(selectedEvent.id).length<=20){
@@ -2213,6 +2245,10 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       triggerSound();
     }catch(error){
       console.error('AMBI RSVP save failed:',error);
+      if(isInvalidSessionError(error)){
+        onSessionExpired?.('Your login session has expired. Please log in again before saving RSVP.');
+        return;
+      }
       alert(`RSVP was not saved: ${error?.message||error}`);
     }
   }
@@ -2222,8 +2258,8 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       alert('Backend is not connected. Event was not saved.');
       return;
     }
-    if(!currentAccount?.session_token){
-      alert('Login session missing. Please log out and log in again.');
+    if(!currentAccount?.session_token || !isSessionValid(currentAccount)){
+      onSessionExpired?.('Your login session has expired. Please log in again, then create the calendar event once more.');
       return;
     }
     const ev={
@@ -2255,6 +2291,10 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       setDraft({title:'',date:savedEvent.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
     }catch(error){
       console.error('AMBI event save failed:',error);
+      if(isInvalidSessionError(error)){
+        onSessionExpired?.('Your login session has expired. Please log in again, then create the calendar event once more.');
+        return;
+      }
       alert(`Event was not saved: ${error?.message||error}`);
     }
   }
