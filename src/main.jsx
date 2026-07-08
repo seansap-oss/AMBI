@@ -5,20 +5,20 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import {Menu,Home,Users,CalendarDays,Plus,UserCircle,Bell,Search,Upload,Edit3,Trash2,Save,ChevronRight,Building2,CheckCircle2,Image as ImageIcon,Download,Share2,BriefcaseBusiness,ShieldCheck,X} from 'lucide-react';
 import './styles.css';
 
-const AMBI_APP_VERSION='21.6.2';
-const AMBI_APP_VERSION_CODE=21602;
+const AMBI_APP_VERSION='21.6.5';
+const AMBI_APP_VERSION_CODE=21605;
 
 function readStoredAppVersionSettings(){
   try{
     return JSON.parse(localStorage.getItem('ambiAppVersionSettingsV21')) || {
-      latestApkVersion:'21.6.2',
+      latestApkVersion:'21.6.5',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
     };
   }catch{
     return {
-      latestApkVersion:'21.6.2',
+      latestApkVersion:'21.6.5',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
@@ -1443,9 +1443,75 @@ const notificationSeed=[
  {t:'2026 holiday calendar installed',d:'Indian national holidays and key Manipuri cultural observances are listed in Calendar.'},
  {t:'Directory loaded',d:'All 80 approved AMBI/BEG members are available in the directory.'}
 ];
-function dateParts(iso){const [y,m,d]=String(iso).split('-').map(Number);return {year:y,month:m-1,day:d}}
+const CALENDAR_CACHE_KEY='ambiCalendarEventsV2164';
+const CALENDAR_PENDING_KEY='ambiCalendarPendingEventsV2164';
+const timeOptions=['All day',...['AM','PM'].flatMap(period=>Array.from({length:12},(_,hourIndex)=>hourIndex+1).flatMap(hour=>['00','15','30','45'].map(minute=>`${hour}:${minute} ${period}`)))];
+function normalizeEventDate(value){
+  if(!value)return '';
+  const text=String(value);
+  if(/^\d{4}-\d{2}-\d{2}/.test(text))return text.slice(0,10);
+  const parsed=new Date(text);
+  if(Number.isNaN(parsed.getTime()))return '';
+  return parsed.toISOString().slice(0,10);
+}
+function parseNameList(value){
+  if(Array.isArray(value))return value.filter(Boolean);
+  if(!value)return [];
+  if(typeof value==='string'){
+    try{
+      const parsed=JSON.parse(value);
+      if(Array.isArray(parsed))return parsed.filter(Boolean);
+    }catch{}
+    return value.split(',').map(item=>item.trim()).filter(Boolean);
+  }
+  return [];
+}
+function dateParts(iso){const [y,m,d]=String(normalizeEventDate(iso)||'2026-06-01').split('-').map(Number);return {year:y,month:m-1,day:d}}
 function monthName(i){return ['January','February','March','April','May','June','July','August','September','October','November','December'][i]}
-function eventKeyDate(ev){return ev.date || `2026-06-${String(ev.day||1).padStart(2,'0')}`}
+function eventKeyDate(ev){return normalizeEventDate(ev?.date || ev?.event_date) || `2026-06-${String(ev?.day||1).padStart(2,'0')}`}
+function isBuiltInEventId(id){return /^(hol|beg)-/i.test(String(id||''))}
+function isPersistentEventId(id){const value=String(id||'');return !!value && !isBuiltInEventId(value) && !value.startsWith('local-')}
+function sameEventIdentity(a,b){
+  if(!a||!b)return false;
+  if(a.id&&b.id&&String(a.id)===String(b.id))return true;
+  return String(a.title||'').trim().toLowerCase()===String(b.title||'').trim().toLowerCase()&&eventKeyDate(a)===eventKeyDate(b)&&String(a.time||'')===String(b.time||'')&&String(a.location||'').trim().toLowerCase()===String(b.location||'').trim().toLowerCase();
+}
+function readCalendarCache(){
+  try{
+    const rows=JSON.parse(localStorage.getItem(CALENDAR_CACHE_KEY));
+    return Array.isArray(rows)?rows.map(toAppEvent).filter(ev=>ev.title&&ev.date):[];
+  }catch{
+    return [];
+  }
+}
+function writeCalendarCache(events){
+  try{
+    const clean=(events||[]).filter(ev=>ev&&ev.title&&ev.date&&!isBuiltInEventId(ev.id));
+    localStorage.setItem(CALENDAR_CACHE_KEY,JSON.stringify(clean));
+  }catch{}
+}
+function readPendingCalendarEvents(){
+  try{
+    const rows=JSON.parse(localStorage.getItem(CALENDAR_PENDING_KEY));
+    return Array.isArray(rows)?rows.map(toAppEvent).filter(ev=>ev.title&&ev.date):[];
+  }catch{
+    return [];
+  }
+}
+function writePendingCalendarEvents(events){
+  try{
+    const clean=[];
+    (events||[]).forEach(ev=>{
+      if(!ev||!ev.title||!ev.date||!String(ev.id||'').startsWith('local-'))return;
+      if(!clean.some(item=>sameEventIdentity(item,ev)))clean.push(ev);
+    });
+    localStorage.setItem(CALENDAR_PENDING_KEY,JSON.stringify(clean));
+  }catch{}
+}
+function upsertCalendarEvent(list,event){
+  const existing=(list||[]).filter(item=>!sameEventIdentity(item,event));
+  return mergeCalendarEvents(seedCalendarEvents,[event,...existing.filter(item=>!isBuiltInEventId(item.id))]);
+}
 
 function toAppMember(row){
   return {
@@ -1495,16 +1561,6 @@ function isSessionValid(account){
   return new Date(account.expires_at).getTime() > Date.now();
 }
 
-function isInvalidSessionError(error){
-  const message=String(error?.message || error?.details || error?.hint || error || '').toLowerCase();
-  return message.includes('invalid or expired session') ||
-    message.includes('expired session') ||
-    message.includes('invalid session') ||
-    message.includes('session expired') ||
-    message.includes('session_token') ||
-    message.includes('session token');
-}
-
 function adminRank(role){
   return {member:0,level1_admin:1,admin:1,level2_admin:2,super_admin:3}[role] || 0;
 }
@@ -1536,17 +1592,17 @@ function readStoredWebFooterSetting(){
 
 function toAppEvent(row){
   return {
-    id: row.id,
+    id: String(row.id || row.event_id || row.uuid || `local-${Date.now()}`),
     title: row.title || 'Untitled Event',
-    date: row.event_date || '',
+    date: normalizeEventDate(row.event_date || row.date || row.start_date || row.event_day),
     time: row.event_time || 'All day',
     location: row.location || 'AMBI',
     type: row.event_type || 'Member Event',
-    createdBy: row.created_by_name || 'Verified Member',
+    createdBy: row.created_by_name || row.created_by || row.username || 'Verified Member',
     source: 'Supabase events table',
-    attending: Array.isArray(row.attending) ? row.attending : [],
-    maybe: Array.isArray(row.maybe) ? row.maybe : [],
-    not: Array.isArray(row.not_attending) ? row.not_attending : [],
+    attending: parseNameList(row.attending),
+    maybe: parseNameList(row.maybe),
+    not: parseNameList(row.not_attending || row.not || row.declined),
     blocked: row.blocked === true,
     blockedBy: row.blocked_by || ''
   };
@@ -1591,11 +1647,90 @@ const seedPosts=[
 ];
 
 function mergeCalendarEvents(staticEvents, backendEvents){
-  const byId = new Map();
-  [...staticEvents, ...backendEvents].forEach(ev => {
-    if (ev && ev.id) byId.set(ev.id, ev);
+  const merged=[];
+  [...staticEvents, ...backendEvents].forEach(ev=>{
+    if(!ev||!ev.id||!ev.title||!ev.date)return;
+    const index=merged.findIndex(item=>sameEventIdentity(item,ev));
+    if(index>=0){
+      const existing=merged[index];
+      const preferNew=String(existing.id||'').startsWith('local-')&&!String(ev.id||'').startsWith('local-');
+      merged[index]=preferNew?ev:{...existing,...ev,id:existing.id};
+    }else{
+      merged.push(ev);
+    }
   });
-  return [...byId.values()].sort((a,b)=>String(eventKeyDate(a)).localeCompare(String(eventKeyDate(b))));
+  return merged.sort((a,b)=>String(eventKeyDate(a)).localeCompare(String(eventKeyDate(b)))||String(a.title||'').localeCompare(String(b.title||'')));
+}
+
+async function loadCalendarEventsFromSupabase(sessionToken){
+  if(!supabaseConfigured||!supabase)throw new Error('Supabase is not connected.');
+  const {data,error}=await supabase.rpc('ambi_get_events',{p_session_token:sessionToken});
+  if(error)throw error;
+  return (data||[]).map(toAppEvent).filter(ev=>ev.title&&ev.date);
+}
+
+function formatSupabaseError(error){
+  if(!error)return 'Unknown Supabase error';
+  if(typeof error==='string')return error;
+  return error.message || error.details || error.hint || error.code || 'Unknown Supabase error';
+}
+
+async function createCalendarEventInSupabase(sessionToken,eventDraft){
+  if(!supabaseConfigured||!supabase)throw new Error('Supabase is not connected.');
+  if(!sessionToken)throw new Error('Login session missing. Please log out and log in again.');
+  const payload={
+    p_session_token:sessionToken,
+    p_title:String(eventDraft.title||'').trim(),
+    p_event_date:normalizeEventDate(eventDraft.date),
+    p_event_time:eventDraft.time || 'All day',
+    p_location:eventDraft.location || 'AMBI',
+    p_event_type:eventDraft.type || 'Member Event',
+    p_description:eventDraft.source || ''
+  };
+  if(!payload.p_title)throw new Error('Event title is required.');
+  if(!payload.p_event_date)throw new Error('Valid event date is required.');
+  const {data,error,status}=await supabase.rpc('ambi_create_event',payload);
+  if(error)throw new Error(`${formatSupabaseError(error)}${status?` (status ${status})`:''}`);
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row?.id)throw new Error('Supabase saved the request but did not return an event row. Check ambi_create_event return query.');
+  return toAppEvent(row);
+}
+
+function createLocalCalendarEvent(eventDraft,currentMember){
+  return {
+    id:`local-${Date.now()}`,
+    title:eventDraft.title || 'Untitled Event',
+    date:normalizeEventDate(eventDraft.date),
+    time:eventDraft.time || 'All day',
+    location:eventDraft.location || 'AMBI',
+    type:eventDraft.type || 'Member Event',
+    createdBy:currentMember?.name || eventDraft.createdBy || 'Verified Member',
+    source:eventDraft.source || 'Saved locally, pending Supabase sync',
+    attending:[],
+    maybe:[],
+    not:[],
+    blocked:false,
+    blockedBy:'',
+    syncStatus:'pending'
+  };
+}
+
+async function syncPendingCalendarEvents(sessionToken,currentMember){
+  if(!supabaseConfigured||!supabase||!sessionToken)return [];
+  const pending=readPendingCalendarEvents();
+  if(!pending.length)return [];
+  const stillPending=[];
+  const confirmed=[];
+  for(const event of pending){
+    try{
+      const saved=await createCalendarEventInSupabase(sessionToken,{...event,source:event.source||'Pending local event'});
+      confirmed.push(saved);
+    }catch{
+      stillPending.push({...event,createdBy:event.createdBy||currentMember?.name||'Verified Member'});
+    }
+  }
+  writePendingCalendarEvents(stillPending);
+  return confirmed;
 }
 
 function App(){
@@ -1613,7 +1748,7 @@ function App(){
   const currentRole=currentAccount?.role || 'member';
   const isManagementUser=canAccessManagement(currentRole);
   const [contacts,setContacts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiContactsV18'))||[]}catch{return []}});
-  const [calendarEvents,setCalendarEvents]=useState(seedCalendarEvents);
+  const [calendarEvents,setCalendarEvents]=useState(()=>mergeCalendarEvents(seedCalendarEvents,[...readCalendarCache(),...readPendingCalendarEvents()]));
   const [memberPosts,setMemberPosts]=useState(()=>{try{return JSON.parse(localStorage.getItem('ambiMemberPostsV20'))||seedPosts}catch{return seedPosts}});
   const [webFooterEnabled,setWebFooterEnabled]=useState(readStoredWebFooterSetting);
   const [appVersionSettings,setAppVersionSettings]=useState(readStoredAppVersionSettings);
@@ -1625,28 +1760,6 @@ function App(){
 
   const setPage=(next)=>{setPageRaw(prev=>{const target=typeof next==='function'?next(prev):next;if(target&&target!==prev){pageRef.current=target;if(historyReadyRef.current&&typeof window!=='undefined'){window.history.pushState({ambiPage:target},'',`${window.location.pathname}${window.location.search}#${target}`)}}return target||prev})};
 
-  function clearExpiredSession(message='Your login session has expired. Please log in again, then create the calendar event once more.'){
-    setCurrentAccount(null);
-    setSelected(null);
-    setContacts([]);
-    setCalendarEvents(seedCalendarEvents);
-    try{localStorage.removeItem('ambiCurrentAccountV19')}catch{}
-    setPage('login');
-    if(message)setTimeout(()=>alert(message),0);
-  }
-
-  function ensureLiveSession(){
-    if(!currentAccount?.session_token){
-      clearExpiredSession('Login session missing. Please log in again, then create the calendar event once more.');
-      return false;
-    }
-    if(!isSessionValid(currentAccount)){
-      clearExpiredSession('Your login session has expired. Please log in again, then create the calendar event once more.');
-      return false;
-    }
-    return true;
-  }
-
   useEffect(()=>{pageRef.current=page},[page]);
   useEffect(()=>{if(typeof window==='undefined')return;if(!window.history.state?.ambiPage){window.history.replaceState({ambiPage:'home'},'',`${window.location.pathname}${window.location.search}#home`)}historyReadyRef.current=true;const onPop=()=>{const target=window.history.state?.ambiPage||'home';pageRef.current=target;setPageRaw(target)};window.addEventListener('popstate',onPop);return()=>window.removeEventListener('popstate',onPop)},[]);
 
@@ -1654,11 +1767,36 @@ function App(){
 
   useEffect(()=>{if(!supabaseConfigured||!supabase){if(import.meta.env.DEV){console.warn('AMBI Supabase is not configured. Check .env.local.')}return}let active=true;supabase.auth.getSession().then(({error})=>{if(!active)return;if(error&&import.meta.env.DEV){console.warn('AMBI Supabase session check failed:',error.message)}});const {data}=supabase.auth.onAuthStateChange(()=>{});return()=>{active=false;data?.subscription?.unsubscribe?.()}},[]);
 
-  useEffect(()=>{let active=true;async function loadMembers(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_members',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);const currentMember=mapped.find(m=>m.id===currentAccount.member_id)||accountToMember(currentAccount);setSelected(currentMember);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(isInvalidSessionError(error)){if(active)clearExpiredSession('Your AMBI login session has expired. Please log in again.');return;}if(import.meta.env.DEV){console.warn('AMBI member directory load failed. Using local fallback.',error?.message||error);}}}loadMembers();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  async function refreshCalendarEvents(showFailure=false){
+    if(!loggedIn||!currentAccount?.session_token)return false;
+    const cached=[...readCalendarCache(),...readPendingCalendarEvents()];
+    if(!supabaseConfigured||!supabase){
+      if(showFailure)setToast('Calendar sync failed: Supabase is not connected');
+      setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,cached));
+      return false;
+    }
+    try{
+      const confirmedPending=await syncPendingCalendarEvents(currentAccount.session_token,selected);
+      const mapped=await loadCalendarEventsFromSupabase(currentAccount.session_token);
+      const merged=mergeCalendarEvents(seedCalendarEvents,[...cached,...confirmedPending,...mapped]);
+      setCalendarEvents(merged);
+      writeCalendarCache(merged);
+      return true;
+    }catch(error){
+      setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,cached));
+      if(showFailure)setToast(`Calendar sync failed: ${error?.message||error}`);
+      if(import.meta.env.DEV){console.warn('AMBI events load failed. Using built-in calendar fallback.',error?.message||error);}
+      return false;
+    }
+  }
 
-  useEffect(()=>{let active=true;async function loadEvents(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_events',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppEvent).filter(ev=>ev.title&&ev.date);setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,mapped));}catch(error){if(isInvalidSessionError(error)){if(active)clearExpiredSession('Your AMBI login session has expired. Please log in again.');return;}if(import.meta.env.DEV){console.warn('AMBI events load failed. Using built-in calendar fallback.',error?.message||error);}}}loadEvents();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  useEffect(()=>{let active=true;async function loadMembers(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_members',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);const currentMember=mapped.find(m=>m.id===currentAccount.member_id)||accountToMember(currentAccount);setSelected(currentMember);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI member directory load failed. Using local fallback.',error?.message||error);}}}loadMembers();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
-  useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(isInvalidSessionError(error)){if(active)clearExpiredSession('Your AMBI login session has expired. Please log in again.');return;}if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  useEffect(()=>{let active=true;async function loadEvents(){if(!active)return;await refreshCalendarEvents(false)}loadEvents();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+
+  useEffect(()=>{if(!loggedIn||!currentAccount?.session_token)return;const sync=()=>{refreshCalendarEvents(false)};const onVisibility=()=>{if(document.visibilityState==='visible')sync()};window.addEventListener('focus',sync);document.addEventListener('visibilitychange',onVisibility);const timer=setInterval(sync,60000);return()=>{window.removeEventListener('focus',sync);document.removeEventListener('visibilitychange',onVisibility);clearInterval(timer)}},[loggedIn,currentAccount?.session_token]);
+
+  useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
   useEffect(()=>{let active=true;async function loadAppSettings(){if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_public_app_settings');if(error)throw error;if(!active)return;const rows=Array.isArray(data)?data:[];const read=(key,fallback='')=>{const found=rows.find(row=>row.setting_key===key);return found?String(found.setting_value):fallback};const footer=rows.find(row=>row.setting_key==='web_mobile_footer_enabled');if(footer){const enabled=String(footer.setting_value)==='true';setWebFooterEnabled(enabled);localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));}const nextVersionSettings={latestApkVersion:read('latest_apk_version','21.5.0'),minimumApkVersionCode:read('minimum_apk_version_code','0'),latestApkDownloadUrl:read('latest_apk_download_url',''),apkReleaseNotes:read('apk_release_notes','')};setAppVersionSettings(nextVersionSettings);localStorage.setItem('ambiAppVersionSettingsV21',JSON.stringify(nextVersionSettings));}catch(error){if(import.meta.env.DEV){console.warn('AMBI app settings load failed. Using local setting fallback.',error?.message||error);}}}loadAppSettings();return()=>{active=false}},[]);
 
@@ -1721,6 +1859,7 @@ function App(){
   useEffect(()=>{if(currentAccount)localStorage.setItem('ambiCurrentAccountV19',JSON.stringify(currentAccount));else localStorage.removeItem('ambiCurrentAccountV19')},[currentAccount]);
   useEffect(()=>localStorage.setItem('ambiContactsV18',JSON.stringify(contacts)),[contacts]);
   useEffect(()=>localStorage.setItem('ambiMemberPostsV20',JSON.stringify(memberPosts)),[memberPosts]);
+  useEffect(()=>writeCalendarCache(calendarEvents),[calendarEvents]);
   useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),2400);return()=>clearTimeout(t)}},[toast]);
 
   const filtered=useMemo(()=>members.filter(m=>(cat==='All'||m.category===cat)&&(`${m.name} ${m.company} ${m.category} ${m.services}`.toLowerCase().includes(query.toLowerCase()))),[members,cat,query]);
@@ -1756,29 +1895,46 @@ function App(){
   function openProfile(m){if(selected?.id&&m.id!==selected.id){setContacts(cs=>cs.some(c=>c.id===m.id)?cs:[{id:m.id,name:m.name,company:m.company,date:new Date().toLocaleDateString()},...cs].slice(0,8));}setSelected(m);setPage('profile')}
   async function createMemberPost(draft){
     if(!currentAccount?.session_token)throw new Error('Please log in first.');
+    let savedPost=null;
     if(supabaseConfigured&&supabase){
-      const {data,error}=await supabase.rpc('ambi_create_post',{
-        p_session_token:currentAccount.session_token,
-        p_kind:draft.kind,
-        p_title:draft.title,
-        p_summary:draft.summary,
-        p_details:draft.details||'',
-        p_asset_name:draft.asset?.name||'',
-        p_asset_type:draft.asset?.type||'',
-        p_asset_src:draft.asset?.src||''
-      });
-      if(error)throw error;
-      const saved=toAppPost(Array.isArray(data)?data[0]:data);
-      setMemberPosts(list=>[saved,...list.filter(p=>p.id!==saved.id)]);
-      setToast('Posted to the member notice board');
-      setPage('home');
-      return saved;
+      try{
+        const {data,error}=await supabase.rpc('ambi_create_post',{
+          p_session_token:currentAccount.session_token,
+          p_kind:draft.kind,
+          p_title:draft.title,
+          p_summary:draft.summary,
+          p_details:draft.details||'',
+          p_asset_name:draft.asset?.name||'',
+          p_asset_type:draft.asset?.type||'',
+          p_asset_src:draft.asset?.src||''
+        });
+        if(error)throw error;
+        savedPost=toAppPost(Array.isArray(data)?data[0]:data);
+      }catch(error){
+        if(import.meta.env.DEV){console.warn('AMBI post Supabase save failed. Saving local copy.',error?.message||error);}
+      }
     }
-    const local={...draft,id:`local-${Date.now()}`,createdBy:selected?.name||currentAccount.username||'Member',company:selected?.company||'',createdAt:new Date().toISOString(),pinned:false,blocked:false};
-    setMemberPosts(list=>[local,...list]);
-    setToast('Posted locally to the notice board');
+    if(!savedPost){
+      savedPost={...draft,id:`local-post-${Date.now()}`,createdBy:selected?.name||currentAccount.username||'Member',company:selected?.company||'',createdAt:new Date().toISOString(),pinned:false,blocked:false};
+    }
+    setMemberPosts(list=>[savedPost,...list.filter(p=>p.id!==savedPost.id)]);
+    if(draft.kind==='Event Notice'&&draft.eventDate){
+      const eventDraft={title:draft.title,date:draft.eventDate,time:draft.eventTime||'All day',location:draft.eventLocation||'AMBI',type:'Member Event',source:draft.details||draft.summary||'Created from Home notice board'};
+      try{
+        const savedEvent=supabaseConfigured&&supabase?await createCalendarEventInSupabase(currentAccount.session_token,eventDraft):createLocalCalendarEvent(eventDraft,selected);
+        setCalendarEvents(list=>upsertCalendarEvent(list,savedEvent));
+        writeCalendarCache(upsertCalendarEvent(calendarEvents,savedEvent));
+      }catch(error){
+        const localEvent=createLocalCalendarEvent(eventDraft,selected);
+        const pending=[localEvent,...readPendingCalendarEvents()];
+        writePendingCalendarEvents(pending);
+        setCalendarEvents(list=>upsertCalendarEvent(list,localEvent));
+        if(import.meta.env.DEV){console.warn('AMBI event notice calendar save pending.',error?.message||error);}
+      }
+    }
+    setToast(String(savedPost.id||'').startsWith('local-')?'Posted locally. It will stay on this device.':'Posted to the member notice board');
     setPage('home');
-    return local;
+    return savedPost;
   }
   async function blockPost(id){
     if(!canModerate(currentRole)){setToast('Admin only');return;}
@@ -1802,7 +1958,7 @@ function App(){
 
   const locked=!loggedIn;
 
-  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount} onSessionExpired={clearExpiredSession}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
 <footer className="avit">
   <p>DESIGNED &amp; DEVELOPED BY</p>
   <h2>Av<span>i</span>T Solutions</h2>
@@ -1982,7 +2138,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   const [msg,setMsg]=useState('');
   const [loginDraft,setLoginDraft]=useState({memberId:'',username:'',password:'123456',role:'member'});
   const [roleDraft,setRoleDraft]=useState({accountId:'',role:'level1_admin'});
-  const [apkDraft,setApkDraft]=useState({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''});
+  const [apkDraft,setApkDraft]=useState({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.5',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''});
   const role=currentAccount?.role || 'member';
   const canCreate=canCreateMemberLogin(role);
   const canAssign=canAssignAdminRoles(role);
@@ -1994,7 +2150,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   const supers=accounts.filter(a=>a.role==='super_admin');
   const selectedRoleAccount=accounts.find(a=>a.account_id===roleDraft.accountId);
   useEffect(()=>{loadAccounts()},[currentAccount?.session_token]);
-  useEffect(()=>{setApkDraft({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.0',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''})},[appVersionSettings.latestApkVersion,appVersionSettings.minimumApkVersionCode,appVersionSettings.latestApkDownloadUrl,appVersionSettings.apkReleaseNotes]);
+  useEffect(()=>{setApkDraft({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.5',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''})},[appVersionSettings.latestApkVersion,appVersionSettings.minimumApkVersionCode,appVersionSettings.latestApkDownloadUrl,appVersionSettings.apkReleaseNotes]);
   useEffect(()=>{if(!loginDraft.memberId&&membersWithoutAccounts[0]){setLoginDraft(d=>({...d,memberId:membersWithoutAccounts[0].id}))}},[membersWithoutAccounts.length]);
   useEffect(()=>{if(!roleDraft.accountId&&accounts[0]){setRoleDraft(d=>({...d,accountId:accounts[0].account_id}))}},[accounts.length]);
   async function loadAccounts(){
@@ -2058,7 +2214,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
     if(!canAssign){setMsg('Super Admin only.');return;}
     setBusy(true);
     try{
-      const ok1=await updateAppSetting('latest_apk_version',apkDraft.latestApkVersion.trim()||'21.5.0');
+      const ok1=await updateAppSetting('latest_apk_version',apkDraft.latestApkVersion.trim()||'21.6.5');
       const ok2=await updateAppSetting('minimum_apk_version_code',String(apkDraft.minimumApkVersionCode||'0').trim()||'0');
       const ok3=await updateAppSetting('latest_apk_download_url',apkDraft.latestApkDownloadUrl.trim());
       const ok4=await updateAppSetting('apk_release_notes',apkDraft.apkReleaseNotes.trim());
@@ -2114,7 +2270,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
       <form onSubmit={saveApkSettings} className="apkSettingsForm">
         <div className="two">
           <label>Latest APK version
-            <input value={apkDraft.latestApkVersion} onChange={e=>setApkDraft({...apkDraft,latestApkVersion:e.target.value})} disabled={!canAssign||busy} placeholder="21.6.0"/>
+            <input value={apkDraft.latestApkVersion} onChange={e=>setApkDraft({...apkDraft,latestApkVersion:e.target.value})} disabled={!canAssign||busy} placeholder="21.6.5"/>
           </label>
           <label>Minimum allowed version code
             <input value={apkDraft.minimumApkVersionCode} onChange={e=>setApkDraft({...apkDraft,minimumApkVersionCode:e.target.value.replace(/[^0-9]/g,'')})} disabled={!canAssign||busy} placeholder="21500"/>
@@ -2193,23 +2349,39 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   </>
 }
 
-function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount,onSessionExpired}){
-  const todayMonth=5;
+function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount}){
+  const now=new Date();
+  const todayMonth=now.getMonth();
+  const todayYear=now.getFullYear();
   const [view,setView]=useState('month');
   const [sound,setSound]=useState(true);
   const [showCreate,setShowCreate]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [syncStatus,setSyncStatus]=useState('');
   const [selectedMonth,setSelectedMonth]=useState(todayMonth);
+  const [selectedYear,setSelectedYear]=useState(todayYear);
+  const [showYearPicker,setShowYearPicker]=useState(false);
+  const [touchStart,setTouchStart]=useState(null);
   const visibleEvents=useMemo(()=>events.filter(ev=>!ev.blocked),[events]);
-  const monthEvents=useMemo(()=>visibleEvents.filter(ev=>dateParts(eventKeyDate(ev)).month===selectedMonth),[visibleEvents,selectedMonth]);
+  const monthEvents=useMemo(()=>visibleEvents.filter(ev=>{const parts=dateParts(eventKeyDate(ev));return parts.year===selectedYear&&parts.month===selectedMonth}),[visibleEvents,selectedMonth,selectedYear]);
+  const yearEvents=useMemo(()=>visibleEvents.filter(ev=>dateParts(eventKeyDate(ev)).year===selectedYear),[visibleEvents,selectedYear]);
   const [selectedEventId,setSelectedEventId]=useState(monthEvents[0]?.id||visibleEvents[0]?.id||'');
-  useEffect(()=>{if(!visibleEvents.some(ev=>ev.id===selectedEventId)){setSelectedEventId(monthEvents[0]?.id||visibleEvents[0]?.id||'')}},[visibleEvents.length,selectedMonth]);
+  useEffect(()=>{if(!visibleEvents.some(ev=>ev.id===selectedEventId)){setSelectedEventId(monthEvents[0]?.id||visibleEvents[0]?.id||'')}},[visibleEvents.length,selectedMonth,selectedYear]);
   const selectedEvent=visibleEvents.find(ev=>ev.id===selectedEventId)||monthEvents[0]||visibleEvents[0];
-  const [draft,setDraft]=useState({title:'',date:`2026-${String(selectedMonth+1).padStart(2,'0')}-24`,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
-  const firstDay=new Date(2026,selectedMonth,1).getDay();
-  const daysInMonth=new Date(2026,selectedMonth+1,0).getDate();
+  const [draft,setDraft]=useState({title:'',date:`${todayYear}-${String(todayMonth+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
+  const firstDay=new Date(selectedYear,selectedMonth,1).getDay();
+  const daysInMonth=new Date(selectedYear,selectedMonth+1,0).getDate();
   const cells=[...Array(firstDay).fill(null),...Array.from({length:daysInMonth},(_,i)=>i+1)];
   while(cells.length%7!==0)cells.push(null);
   const eventByDay=(day)=>monthEvents.filter(ev=>dateParts(eventKeyDate(ev)).day===day);
+  const changeMonth=(delta)=>{setSelectedMonth(month=>{let next=month+delta;if(next<0){setSelectedYear(year=>year-1);return 11}if(next>11){setSelectedYear(year=>year+1);return 0}return next})};
+  const monthCount=(month)=>yearEvents.filter(ev=>dateParts(eventKeyDate(ev)).month===month).length;
+  const weekAnchor=selectedEvent?new Date(eventKeyDate(selectedEvent)):new Date(selectedYear,selectedMonth,1);
+  const weekStart=new Date(weekAnchor);
+  weekStart.setDate(weekAnchor.getDate()-weekAnchor.getDay());
+  const weekDays=Array.from({length:7},(_,i)=>{const day=new Date(weekStart);day.setDate(weekStart.getDate()+i);return day});
+  const openMonth=(month)=>{setSelectedMonth(month);setView('month');setShowYearPicker(false)};
+  const handleSwipeEnd=(clientX)=>{if(touchStart===null)return;const diff=clientX-touchStart;if(Math.abs(diff)>45)changeMonth(diff<0?1:-1);setTouchStart(null)};
   const findMember=(name)=>members.find(m=>m.name===name);
   const attendeeNames=selectedEvent?[...(selectedEvent.attending||[]),...(selectedEvent.maybe||[]),...(selectedEvent.not||[])]:[];
   const attendeeMembers=attendeeNames.map(findMember).filter(Boolean);
@@ -2217,19 +2389,21 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
   const total=selectedEvent?(selectedEvent.attending||[]).length+(selectedEvent.maybe||[]).length+(selectedEvent.not||[]).length:0;
   function triggerSound(){if(!sound)return;try{new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{})}catch{}}
   async function doRsvp(status){
+    if(saving)return;
     if(!selectedEvent)return;
     if(!supabaseConfigured||!supabase){
       alert('Backend is not connected. RSVP was not saved.');
       return;
     }
-    if(!currentAccount?.session_token || !isSessionValid(currentAccount)){
-      onSessionExpired?.('Your login session has expired. Please log in again, then create the calendar event once more.');
+    if(!currentAccount?.session_token){
+      alert('Login session missing. Please log out and log in again.');
       return;
     }
-    if(String(selectedEvent.id).length<=20){
+    if(!isPersistentEventId(selectedEvent.id)){
       alert('This built-in calendar item cannot save RSVP yet. Please create a live member event.');
       return;
     }
+    setSaving(true);
     try{
       const {data,error}=await supabase.rpc('ambi_rsvp_event',{
         p_session_token:currentAccount.session_token,
@@ -2242,66 +2416,65 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       const mapped=toAppEvent(fresh);
       setEvents(list=>list.map(ev=>ev.id===mapped.id?mapped:ev));
       setSelectedEventId(mapped.id);
+      setSyncStatus('RSVP saved and synced.');
       triggerSound();
     }catch(error){
       console.error('AMBI RSVP save failed:',error);
-      if(isInvalidSessionError(error)){
-        onSessionExpired?.('Your login session has expired. Please log in again before saving RSVP.');
-        return;
-      }
       alert(`RSVP was not saved: ${error?.message||error}`);
+    }finally{
+      setSaving(false);
     }
   }
   async function saveEvent(){
-    if(!draft.title.trim())return;
-    if(!supabaseConfigured||!supabase){
-      alert('Backend is not connected. Event was not saved.');
-      return;
-    }
-    if(!currentAccount?.session_token || !isSessionValid(currentAccount)){
-      onSessionExpired?.('Your login session has expired. Please log in again, then create the calendar event once more.');
+    if(saving)return;
+    if(!draft.title.trim()){
+      setSyncStatus('Please enter an event title before saving.');
       return;
     }
     const ev={
       title:draft.title.trim(),
-      date:draft.date,
+      date:normalizeEventDate(draft.date),
       time:draft.time||'All day',
       location:draft.location||'AMBI',
       type:draft.type||'Member Event',
       source:'Member-created calendar item'
     };
+    if(!ev.date){
+      setSyncStatus('Please choose a valid event date.');
+      return;
+    }
+    setSaving(true);
+    setSyncStatus('Saving event to Supabase...');
     try{
-      const {data,error}=await supabase.rpc('ambi_create_event',{
-        p_session_token:currentAccount.session_token,
-        p_title:ev.title,
-        p_event_date:ev.date,
-        p_event_time:ev.time,
-        p_location:ev.location,
-        p_event_type:ev.type,
-        p_description:ev.source
-      });
-      if(error)throw error;
-      const row=Array.isArray(data)?data[0]:data;
-      if(!row?.id)throw new Error('Supabase did not return the saved event.');
-      const savedEvent=toAppEvent(row);
-      setEvents(list=>[savedEvent,...list.filter(item=>item.id!==savedEvent.id)]);
-      setSelectedMonth(dateParts(savedEvent.date).month);
+      const savedEvent=await createCalendarEventInSupabase(currentAccount?.session_token,ev);
+      setEvents(list=>upsertCalendarEvent(list,savedEvent));
+      const savedParts=dateParts(savedEvent.date);
+      setSelectedYear(savedParts.year);
+      setSelectedMonth(savedParts.month);
       setSelectedEventId(savedEvent.id);
       setShowCreate(false);
       setDraft({title:'',date:savedEvent.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
+      setSyncStatus('Saved to Supabase. Calendar synced.');
     }catch(error){
       console.error('AMBI event save failed:',error);
-      if(isInvalidSessionError(error)){
-        onSessionExpired?.('Your login session has expired. Please log in again, then create the calendar event once more.');
-        return;
-      }
-      alert(`Event was not saved: ${error?.message||error}`);
+      const reason=formatSupabaseError(error);
+      const localEvent=createLocalCalendarEvent(ev,currentMember);
+      writePendingCalendarEvents([localEvent,...readPendingCalendarEvents()]);
+      setEvents(list=>upsertCalendarEvent(list,localEvent));
+      const savedParts=dateParts(localEvent.date);
+      setSelectedYear(savedParts.year);
+      setSelectedMonth(savedParts.month);
+      setSelectedEventId(localEvent.id);
+      setShowCreate(false);
+      setSyncStatus(`Supabase save failed: ${reason}. Event kept locally and will retry sync.`);
+    }finally{
+      setSaving(false);
     }
   }
   async function blockEvent(id){
     if(!canModerate(currentAccount?.role)){alert('Admin only');return;}
     setEvents(list=>list.map(ev=>ev.id===id?{...ev,blocked:true,blockedBy:currentAccount?.full_name||'Admin'}:ev));
-    if(supabaseConfigured&&supabase&&String(id).length>20&&currentAccount?.session_token){
+    if(supabaseConfigured&&supabase&&isPersistentEventId(id)&&currentAccount?.session_token){
       const {error}=await supabase.rpc('ambi_block_event',{p_session_token:currentAccount.session_token,p_event_id:id});
       if(error&&import.meta.env.DEV)console.warn('Event blocked locally but not in Supabase:',error.message);
     }
@@ -2309,28 +2482,86 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
   async function deleteEvent(id){
     if(!canModerate(currentAccount?.role)){alert('Admin only');return;}
     setEvents(list=>list.filter(ev=>ev.id!==id));
-    if(supabaseConfigured&&supabase&&String(id).length>20&&currentAccount?.session_token){
+    if(supabaseConfigured&&supabase&&isPersistentEventId(id)&&currentAccount?.session_token){
       const {error}=await supabase.rpc('ambi_delete_event',{p_session_token:currentAccount.session_token,p_event_id:id});
       if(error&&import.meta.env.DEV)console.warn('Event deleted locally but not in Supabase:',error.message);
     }
   }
   return <>
-    <section className="pageHero reminderHero"><p className="eyebrow">Calendar</p><h1>Member calendar, holidays and RSVP.</h1><p>Approved members can create calendar items directly. They appear immediately for everyone. Admins can remove or block inappropriate items.</p><div className="heroActions"><button onClick={()=>setShowCreate(true)}><Plus/>Create Event</button><button onClick={()=>setSound(!sound)}><Bell/>{sound?'Sound On':'Sound Off'}</button></div></section>
+    <section className="pageHero reminderHero"><p className="eyebrow">Calendar</p><h1>Member calendar, holidays and RSVP.</h1><p>Approved members can create calendar items directly. Events stay cached locally and sync online through Supabase when available.</p><div className="heroActions"><button onClick={()=>setShowCreate(true)} disabled={saving}><Plus/>Create Event</button><button onClick={()=>setShowYearPicker(true)} disabled={saving}><CalendarDays/>{selectedYear} Year View</button><button onClick={()=>setSound(!sound)} disabled={saving}><Bell/>{sound?'Sound On':'Sound Off'}</button></div>{syncStatus&&<div className="releaseBadge">{syncStatus}</div>}</section>
     <section className="calendarAppV16">
-      <aside className="calendarRailV16"><div className="miniYearV16"><button onClick={()=>setSelectedMonth(Math.max(0,selectedMonth-1))}>‹</button><b>2026</b><button onClick={()=>setSelectedMonth(Math.min(11,selectedMonth+1))}>›</button></div>{Array.from({length:12},(_,i)=><button key={i} className={i===selectedMonth?'active':''} onClick={()=>setSelectedMonth(i)}><span>{monthName(i)}</span><b>{visibleEvents.filter(ev=>dateParts(eventKeyDate(ev)).month===i).length}</b></button>)}</aside>
-      <div className="calendarMainV16"><div className="calendarHeaderV16"><div><p className="eyebrow">{monthName(selectedMonth)} 2026</p><h2>AMBI Calendar</h2></div><div className="viewToggleV16"><button className={view==='month'?'active':''} onClick={()=>setView('month')}>Month</button><button className={view==='list'?'active':''} onClick={()=>setView('list')}>List</button></div></div>{view==='month'?<><div className="weekdaysV16">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><b key={d}>{d}</b>)}</div><div className="monthGridV16">{cells.map((day,i)=>day?<button key={i} className={`${eventByDay(day).length?'hasEvent':''} ${selectedEvent&&dateParts(eventKeyDate(selectedEvent)).day===day&&dateParts(eventKeyDate(selectedEvent)).month===selectedMonth?'selected':''}`} onClick={()=>{const ev=eventByDay(day)[0]; if(ev)setSelectedEventId(ev.id)}}><span className="dayNumV16">{day}</span>{eventByDay(day).slice(0,3).map(ev=><small key={ev.id}>{ev.title}</small>)}</button>:<button key={i} className="blankDayV19" disabled></button>)}</div></>:<div className="eventListFullV16">{monthEvents.map(ev=><button key={ev.id} className={selectedEvent?.id===ev.id?'active':''} onClick={()=>setSelectedEventId(ev.id)}><b>{dateParts(eventKeyDate(ev)).day}</b><div><strong>{ev.title}</strong><small>{ev.time} · {ev.location}</small></div><span>{(ev.attending||[]).length} attending</span></button>)}</div>}</div>
+      <aside className="calendarRailV16"><div className="miniYearV16"><button onClick={()=>changeMonth(-1)}>‹</button><b onClick={()=>setShowYearPicker(true)}>{selectedYear}</b><button onClick={()=>changeMonth(1)}>›</button></div>{Array.from({length:12},(_,i)=><button key={i} className={i===selectedMonth?'active':''} onClick={()=>openMonth(i)}><span>{monthName(i)}</span><b>{monthCount(i)}</b></button>)}</aside>
+      <div className="calendarMainV16" onTouchStart={e=>setTouchStart(e.touches[0].clientX)} onTouchEnd={e=>handleSwipeEnd(e.changedTouches[0].clientX)}><div className="calendarHeaderV16"><div><p className="eyebrow">{monthName(selectedMonth)} {selectedYear}</p><h2>AMBI Calendar</h2></div><div className="viewToggleV16"><button className={view==='month'?'active':''} onClick={()=>setView('month')}>Month</button><button className={view==='week'?'active':''} onClick={()=>setView('week')}>Week</button><button className={view==='list'?'active':''} onClick={()=>setView('list')}>List</button><button className={view==='year'?'active':''} onClick={()=>setView('year')}>Year</button></div></div>{view==='month'?<><div className="weekdaysV16">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><b key={d}>{d}</b>)}</div><div className="monthGridV16">{cells.map((day,i)=>day?<button key={i} className={`${eventByDay(day).length?'hasEvent':''} ${selectedEvent&&dateParts(eventKeyDate(selectedEvent)).day===day&&dateParts(eventKeyDate(selectedEvent)).month===selectedMonth&&dateParts(eventKeyDate(selectedEvent)).year===selectedYear?'selected':''}`} onClick={()=>{const ev=eventByDay(day)[0]; if(ev)setSelectedEventId(ev.id)}}><span className="dayNumV16">{day}</span>{eventByDay(day).slice(0,3).map(ev=><small key={ev.id}>{ev.title}</small>)}</button>:<button key={i} className="blankDayV19" disabled></button>)}</div></>:view==='week'?<div className="weekViewV2164">{weekDays.map(day=>{const iso=day.toISOString().slice(0,10);const dayEvents=visibleEvents.filter(ev=>eventKeyDate(ev)===iso);return <div key={iso} className="weekDayV2164"><b>{day.toLocaleDateString(undefined,{weekday:'short',day:'numeric'})}</b>{dayEvents.length?dayEvents.map(ev=><button key={ev.id} onClick={()=>setSelectedEventId(ev.id)} className={selectedEvent?.id===ev.id?'active':''}>{ev.time} · {ev.title}</button>):<small>No event</small>}</div>})}</div>:view==='year'?<div className="yearGridV2164">{Array.from({length:12},(_,i)=><button key={i} className={i===selectedMonth?'active':''} onClick={()=>openMonth(i)}><b>{monthName(i)}</b><span>{monthCount(i)} event{monthCount(i)===1?'':'s'}</span></button>)}</div>:<div className="eventListFullV16">{monthEvents.map(ev=><button key={ev.id} className={selectedEvent?.id===ev.id?'active':''} onClick={()=>setSelectedEventId(ev.id)}><b>{dateParts(eventKeyDate(ev)).day}</b><div><strong>{ev.title}</strong><small>{ev.time} · {ev.location}</small></div><span>{(ev.attending||[]).length} attending</span></button>)}</div>}</div>
       <aside className="eventDeskV16">{selectedEvent?<><div className="eventBadgeV16"><CalendarDays/><span>{selectedEvent.type||'Calendar Item'}</span></div><h2>{selectedEvent.title}</h2><p>{eventKeyDate(selectedEvent)} · {selectedEvent.time} · {selectedEvent.location}</p><small>Created by {selectedEvent.createdBy}. No approval required.</small><div className="rsvpStatsV16"><div><b>{(selectedEvent.attending||[]).length}</b><span>Attending</span></div><div><b>{(selectedEvent.maybe||[]).length}</b><span>Maybe</span></div><div><b>{(selectedEvent.not||[]).length}</b><span>Not</span></div></div><div className="rsvpButtonsV16"><button onClick={()=>doRsvp('attending')}>Attending</button><button onClick={()=>doRsvp('maybe')}>Maybe</button><button onClick={()=>doRsvp('not')}>Not Attending</button></div><div className="attendeeTabsV16"><h3>Attendee Directory</h3><AttendeeGroup title="Attending" names={selectedEvent.attending||[]} members={members} openProfile={openProfile}/><AttendeeGroup title="Maybe" names={selectedEvent.maybe||[]} members={members} openProfile={openProfile}/><AttendeeGroup title="Not Attending" names={selectedEvent.not||[]} members={members} openProfile={openProfile}/></div><div className="companiesV16"><h3>Attending Companies</h3>{companies.length?companies.map(c=><span key={c}>{c}</span>):<small>No company list yet.</small>}</div><div className="adminControlsV19"><h3>Admin controls</h3><button onClick={()=>blockEvent(selectedEvent.id)}><ShieldCheck/>Block event</button><button onClick={()=>deleteEvent(selectedEvent.id)}><Trash2/>Delete event</button></div></>:<p>No calendar item selected.</p>}</aside>
     </section>
     <section className="panel eventNetworkPanelV16"><div className="sectionHead"><div><p className="eyebrow">Event Network</p><h2>{total} member responses connected to verified profiles</h2></div><button><Share2/>Share Event</button></div><div className="eventMemberStripV16">{attendeeMembers.map(m=><button key={m.id} onClick={()=>openProfile(m)}><Avatar m={m}/><b>{m.name}</b><small>{m.company}</small></button>)}</div></section>
-    {showCreate&&<div className="modalOverlayV16" onClick={()=>setShowCreate(false)}><div className="createEventModalV16" onClick={e=>e.stopPropagation()}><div className="sectionHead"><div><p className="eyebrow">Create Calendar Item</p><h2>Post directly to Calendar</h2></div><button onClick={()=>setShowCreate(false)}>Close</button></div><div className="two"><label>Event Title<input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} placeholder="Example: Business Networking Evening"/></label><label>Date<input type="date" value={draft.date} onChange={e=>setDraft({...draft,date:e.target.value})}/></label></div><div className="two"><label>Time<input value={draft.time} onChange={e=>setDraft({...draft,time:e.target.value})}/></label><label>Location<input value={draft.location} onChange={e=>setDraft({...draft,location:e.target.value})}/></label></div><label>Type<select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})}><option>Member Event</option><option>Business Meeting</option><option>Announcement</option><option>Holiday / Observance</option></select></label><div className="successMsg"><CheckCircle2/> This will appear on the calendar immediately. Admin can block or delete later if required.</div><button onClick={saveEvent}><CheckCircle2/>Save to Calendar</button></div></div>}
+    {showYearPicker&&<div className="modalOverlayV16" onClick={()=>setShowYearPicker(false)}><div className="yearPickerModalV2164" onClick={e=>e.stopPropagation()}><div className="sectionHead"><div><p className="eyebrow">Year View</p><h2>{selectedYear}</h2></div><button onClick={()=>setShowYearPicker(false)}>Close</button></div><div className="yearNavV2164"><button onClick={()=>setSelectedYear(year=>year-1)}>Previous year</button><button onClick={()=>setSelectedYear(todayYear)}>Today</button><button onClick={()=>setSelectedYear(year=>year+1)}>Next year</button></div><div className="yearGridV2164">{Array.from({length:12},(_,i)=><button key={i} className={i===selectedMonth?'active':''} onClick={()=>openMonth(i)}><b>{monthName(i)}</b><span>{monthCount(i)} event{monthCount(i)===1?'':'s'}</span></button>)}</div></div></div>}
+    {showCreate&&<div className="modalOverlayV16" onClick={()=>setShowCreate(false)}><div className="createEventModalV16" onClick={e=>e.stopPropagation()}><div className="sectionHead"><div><p className="eyebrow">Create Calendar Item</p><h2>Post directly to Calendar</h2></div><button onClick={()=>setShowCreate(false)} disabled={saving}>Close</button></div><div className="two"><label>Event Title<input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} placeholder="Example: Business Networking Evening" disabled={saving}/></label><label>Date<input type="date" value={draft.date} onChange={e=>setDraft({...draft,date:e.target.value})} disabled={saving}/></label></div><div className="two"><label>Time<select value={draft.time} onChange={e=>setDraft({...draft,time:e.target.value})} disabled={saving}>{timeOptions.map(option=><option key={option} value={option}>{option}</option>)}</select></label><label>Location<input value={draft.location} onChange={e=>setDraft({...draft,location:e.target.value})} disabled={saving}/></label></div><label>Type<select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})} disabled={saving}><option>Member Event</option><option>Business Meeting</option><option>Announcement</option><option>Holiday / Observance</option></select></label><div className="successMsg"><CheckCircle2/> This will appear on the calendar only after Supabase confirms the save.</div><button onClick={saveEvent} disabled={saving}><CheckCircle2/>{saving?'Saving...':'Save to Calendar'}</button></div></div>}
   </>
 }
 function AttendeeGroup({title,names,members,openProfile}){return <div className="attendeeGroupV16"><div className="attendeeGroupHeadV16"><b>{title}</b><span>{names.length}</span></div>{names.length?names.map(name=>{const m=members.find(x=>x.name===name);return <button key={name} onClick={()=>m&&openProfile(m)}>{m?<Avatar m={m}/>:<div className="avatarMono mini">{name.slice(0,2).toUpperCase()}</div>}<div><strong>{name}</strong><small>{m?.company||'Verified Member'}</small></div><ChevronRight size={15}/></button>}):<small className="emptyMiniV16">No responses yet.</small>}</div>}
 
 function SubmitContent({onCreatePost,currentMember}){
-  const [asset,setAsset]=useState(null);const [kind,setKind]=useState('Advertisement');const [title,setTitle]=useState('');const [summary,setSummary]=useState('');const [details,setDetails]=useState('');const [msg,setMsg]=useState('');const [busy,setBusy]=useState(false);
+  const now=new Date();
+  const [asset,setAsset]=useState(null);
+  const [kind,setKind]=useState('Advertisement');
+  const [title,setTitle]=useState('');
+  const [summary,setSummary]=useState('');
+  const [details,setDetails]=useState('');
+  const [eventDate,setEventDate]=useState(now.toISOString().slice(0,10));
+  const [eventTime,setEventTime]=useState('4:00 PM');
+  const [eventLocation,setEventLocation]=useState('BEG Office');
+  const [msg,setMsg]=useState('');
+  const [busy,setBusy]=useState(false);
+  const isEvent=kind==='Event Notice';
   function fileUp(file){if(!file)return;readFile(file,v=>setAsset({name:file.name,type:file.type,src:v}))}
-  async function submit(e){e.preventDefault();if(!title.trim()||!summary.trim()){setMsg('Please add a title and short summary before posting.');return}setBusy(true);setMsg('');try{await onCreatePost({kind,title:title.trim(),summary:summary.trim(),details:details.trim(),asset,createdBy:currentMember?.name||'Member',company:currentMember?.company||''});setTitle('');setSummary('');setDetails('');setAsset(null);setKind('Advertisement');setMsg('Posted to Home notice board. Admin can block/delete later if required.')}catch(error){setMsg(error?.message||'Post failed. Please try again.')}finally{setBusy(false)}}
-  return <><section className="pageHero"><p className="eyebrow">Member post</p><h1>Post a notice, advertisement or announcement.</h1><p>No approval queue. Member posts appear on the Home notice board immediately. Admins can block or delete unsuitable posts later.</p></section><section className="builder submitClean"><form onSubmit={submit}><label>Post type<select value={kind} onChange={e=>setKind(e.target.value)}><option>Advertisement</option><option>Notice</option><option>Announcement</option><option>Event Notice</option><option>Business Offer</option></select></label><label>Title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Example: Special member offer / meeting notice"/></label><label>Short summary<textarea value={summary} onChange={e=>setSummary(e.target.value)} placeholder="This short summary appears on the Home notice board."/></label><label className="submitUpload"><Upload/> Upload image or PDF<input type="file" accept="image/*,.pdf" onChange={e=>fileUp(e.target.files[0])}/>{asset&&<span>{asset.name}</span>}</label><label>Full details<textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="Add date, location, contact number, offer details or supporting information."/></label><button type="submit" disabled={busy}><Save/> {busy?'Posting...':'Post to Home'}</button>{msg&&<div className="successMsg">{msg}</div>}</form><aside className="preview"><h2>Home card preview</h2><div className="contentPreviewCard"><span>{kind}</span><h3>{title||'Post title'}</h3><p>{summary||'Short summary will appear here.'}</p>{asset&&asset.type.startsWith('image/')?<img src={asset.src}/>:asset&&<b>PDF attached: {asset.name}</b>}<small>Posted by {currentMember?.name||'Verified Member'}{currentMember?.company?` • ${currentMember.company}`:''}</small></div></aside></section></>}
+  async function submit(e){
+    e.preventDefault();
+    if(!title.trim()||!summary.trim()){setMsg('Please add a title and short summary before posting.');return}
+    if(isEvent&&!normalizeEventDate(eventDate)){setMsg('Please choose a valid event date.');return}
+    setBusy(true);
+    setMsg('');
+    try{
+      await onCreatePost({
+        kind,
+        title:title.trim(),
+        summary:summary.trim(),
+        details:details.trim(),
+        asset,
+        createdBy:currentMember?.name||'Member',
+        company:currentMember?.company||'',
+        eventDate:isEvent?eventDate:'',
+        eventTime:isEvent?eventTime:'',
+        eventLocation:isEvent?eventLocation:''
+      });
+      setTitle('');
+      setSummary('');
+      setDetails('');
+      setAsset(null);
+      setKind('Advertisement');
+      setMsg(isEvent?'Posted to Home and linked to Calendar.':'Posted to Home notice board. Admin can block/delete later if required.');
+    }catch(error){
+      setMsg(error?.message||'Post failed. Please try again.');
+    }finally{
+      setBusy(false);
+    }
+  }
+  return <>
+    <section className="pageHero"><p className="eyebrow">Member post</p><h1>Post a notice, advertisement or announcement.</h1><p>Event Notice posts can also create a linked Calendar item with date, time and location.</p></section>
+    <section className="builder submitClean">
+      <form onSubmit={submit}>
+        <label>Post type<select value={kind} onChange={e=>setKind(e.target.value)}><option>Advertisement</option><option>Notice</option><option>Announcement</option><option>Event Notice</option><option>Business Offer</option></select></label>
+        <label>Title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Example: Special member offer / meeting notice"/></label>
+        <label>Short summary<textarea value={summary} onChange={e=>setSummary(e.target.value)} placeholder="This short summary appears on the Home notice board."/></label>
+        {isEvent&&<fieldset className="eventNoticeFieldsV2164"><legend>Calendar link</legend><div className="two"><label>Event date<input type="date" value={eventDate} onChange={e=>setEventDate(e.target.value)}/></label><label>Event time<select value={eventTime} onChange={e=>setEventTime(e.target.value)}>{timeOptions.map(option=><option key={option} value={option}>{option}</option>)}</select></label></div><label>Event location<input value={eventLocation} onChange={e=>setEventLocation(e.target.value)} placeholder="BEG Office / Imphal / Online"/></label></fieldset>}
+        <label className="submitUpload"><Upload/> Upload image or PDF<input type="file" accept="image/*,.pdf" onChange={e=>fileUp(e.target.files[0])}/>{asset&&<span>{asset.name}</span>}</label>
+        <label>Full details<textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="Add date, location, contact number, offer details or supporting information."/></label>
+        <button type="submit" disabled={busy}><Save/> {busy?'Posting...':isEvent?'Post + Add to Calendar':'Post to Home'}</button>
+        {msg&&<div className="successMsg">{msg}</div>}
+      </form>
+      <aside className="preview"><h2>Home card preview</h2><div className="contentPreviewCard"><span>{kind}</span><h3>{title||'Post title'}</h3><p>{summary||'Short summary will appear here.'}</p>{isEvent&&<small>{eventDate} · {eventTime} · {eventLocation}</small>}{asset&&asset.type.startsWith('image/')?<img src={asset.src}/>:asset&&<b>PDF attached: {asset.name}</b>}<small>Posted by {currentMember?.name||'Verified Member'}{currentMember?.company?` • ${currentMember.company}`:''}</small></div></aside>
+    </section>
+  </>
+}
 function Notifications({events=[],setPage}){const upcoming=events.filter(e=>!e.blocked).slice(0,6);return <><section className="pageHero"><p className="eyebrow">Notifications</p><h1>Member alerts and calendar reminders</h1><p>Latest AMBI alerts, calendar items and member notices. Use Calendar for RSVP and full event details.</p></section><section className="panel"><div className="sectionHead"><h2>Important alerts</h2><button onClick={()=>setPage('calendar')}><CalendarDays/>Open Calendar</button></div>{notificationSeed.map(n=><div className="notice" key={n.t}><Bell/><div><h3>{n.t}</h3><p>{n.d}</p></div></div>)}{upcoming.map(ev=><div className="notice" key={ev.id}><CalendarDays/><div><h3>{ev.title}</h3><p>{eventKeyDate(ev)} · {ev.time} · {ev.location}</p></div></div>)}</section></>}
 createRoot(document.getElementById('root')).render(<App/>);

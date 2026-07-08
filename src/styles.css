@@ -624,7 +624,7 @@ button:disabled{
   .releaseBadge{font-size:10px}
 }
 
-/* AMBI v21.6.1 - compact AviT Solutions footer */
+/* AMBI v21.6.5 - compact AviT Solutions footer */
 .avit{
   margin:28px 0 92px;
   min-height:0;
@@ -677,5 +677,112 @@ button:disabled{
   }
   .avitContact{
     gap:2px 7px;
+  }
+}
+
+/* AMBI v21.6.5 - robust calendar year/week/event notice views */
+.miniYearV16 b{
+  cursor:pointer;
+}
+.yearGridV2164{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.yearGridV2164 button{
+  border:1px solid rgba(15,76,58,.12);
+  background:#fff;
+  border-radius:18px;
+  min-height:92px;
+  padding:16px;
+  text-align:left;
+  color:#17221d;
+}
+.yearGridV2164 button.active,
+.yearGridV2164 button:hover{
+  border-color:#c59d3d;
+  background:#fff8e8;
+}
+.yearGridV2164 b{
+  display:block;
+  font-size:18px;
+  color:#0f4c3a;
+}
+.yearGridV2164 span{
+  display:block;
+  margin-top:8px;
+  color:#66736d;
+  font-weight:800;
+}
+.yearPickerModalV2164{
+  width:min(760px,96vw);
+  max-height:90vh;
+  overflow:auto;
+  background:#fffdf8;
+  border:1px solid rgba(15,76,58,.15);
+  border-radius:28px;
+  padding:24px;
+  box-shadow:0 40px 120px rgba(0,0,0,.28);
+}
+.yearNavV2164{
+  display:flex;
+  gap:10px;
+  margin:0 0 16px;
+  flex-wrap:wrap;
+}
+.yearNavV2164 button{
+  border:0;
+  border-radius:14px;
+  background:#eef7f1;
+  color:#0f4c3a;
+  padding:10px 14px;
+  font-weight:900;
+}
+.weekViewV2164{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:8px;
+}
+.weekDayV2164{
+  min-height:180px;
+  border:1px solid rgba(15,76,58,.12);
+  background:#fff;
+  border-radius:18px;
+  padding:12px;
+}
+.weekDayV2164>b{
+  display:block;
+  color:#0f4c3a;
+  margin-bottom:10px;
+}
+.weekDayV2164 button{
+  width:100%;
+  border:0;
+  border-radius:12px;
+  background:#eef7f1;
+  color:#17221d;
+  padding:8px;
+  text-align:left;
+  font-weight:850;
+  margin-bottom:6px;
+}
+.weekDayV2164 button.active{
+  background:#0f4c3a;
+  color:white;
+}
+.weekDayV2164 small{
+  color:#66736d;
+}
+.eventNoticeFieldsV2164{
+  display:grid;
+  gap:12px;
+}
+@media(max-width:900px){
+  .weekViewV2164,
+  .yearGridV2164{
+    grid-template-columns:1fr;
+  }
+  .weekDayV2164{
+    min-height:auto;
   }
 }
