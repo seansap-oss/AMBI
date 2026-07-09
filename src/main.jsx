@@ -5,68 +5,25 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import {Menu,Home,Users,CalendarDays,Plus,UserCircle,Bell,Search,Upload,Edit3,Trash2,Save,ChevronRight,Building2,CheckCircle2,Image as ImageIcon,Download,Share2,BriefcaseBusiness,ShieldCheck,X} from 'lucide-react';
 import './styles.css';
 
-const AMBI_APP_VERSION='21.6.6';
-const AMBI_APP_VERSION_CODE=21606;
+const AMBI_APP_VERSION='21.6.7';
+const AMBI_APP_VERSION_CODE=21607;
 
 function readStoredAppVersionSettings(){
   try{
     return JSON.parse(localStorage.getItem('ambiAppVersionSettingsV21')) || {
-      latestApkVersion:'21.6.6',
+      latestApkVersion:'21.6.7',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
     };
   }catch{
     return {
-      latestApkVersion:'21.6.6',
+      latestApkVersion:'21.6.7',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
     };
   }
-
-}
-
-const CURRENT_ACCOUNT_KEY='ambiCurrentAccountV19';
-
-function normalizeAccountSession(account){
-  if(!account)return null;
-  return {
-    ...account,
-    account_id: account.account_id || account.id || '',
-    member_id: account.member_id || account.memberId || '',
-    username: account.username || '',
-    session_token: account.session_token || account.sessionToken || '',
-    expires_at: account.expires_at || account.expiresAt || ''
-  };
-}
-
-function readStoredCurrentAccount(){
-  try{
-    return normalizeAccountSession(JSON.parse(localStorage.getItem(CURRENT_ACCOUNT_KEY)));
-  }catch{
-    return null;
-  }
-}
-
-function writeStoredCurrentAccount(account){
-  try{
-    if(account)localStorage.setItem(CURRENT_ACCOUNT_KEY,JSON.stringify(account));
-    else localStorage.removeItem(CURRENT_ACCOUNT_KEY);
-  }catch{}
-}
-
-function sameAccountIdentity(a,b){
-  if(!a||!b)return false;
-  if(a.account_id&&b.account_id&&String(a.account_id)===String(b.account_id))return true;
-  if(a.id&&b.id&&String(a.id)===String(b.id))return true;
-  if(a.member_id&&b.member_id&&String(a.member_id)===String(b.member_id))return true;
-  return !!a.username&&!!b.username&&String(a.username).toLowerCase()===String(b.username).toLowerCase();
-}
-
-function isInvalidSessionError(error){
-  const text=String(error?.message || error?.details || error || '').toLowerCase();
-  return text.includes('invalid or expired session') || text.includes('login session missing') || text.includes('session missing');
 }
 
 
@@ -1689,20 +1646,46 @@ const seedPosts=[
   {id:'seed-post-2',kind:'Event',title:'Calendar events can be featured here',summary:'Important events can guide members to the shared calendar and RSVP page.',details:'Open Calendar to view details and RSVP.',createdBy:'AMBI Calendar',company:'AMBI',createdAt:'2026-06-02T09:00:00Z',pinned:false,blocked:false}
 ];
 
+function eventIdentityKey(ev){
+  if(!ev)return '';
+  if(isPersistentEventId(ev.id))return `id:${String(ev.id)}`;
+  return `sig:${String(ev.title||'').trim().toLowerCase()}|${eventKeyDate(ev)}|${String(ev.time||'').trim().toLowerCase()}|${String(ev.location||'').trim().toLowerCase()}`;
+}
+
 function mergeCalendarEvents(staticEvents, backendEvents){
-  const merged=[];
-  [...staticEvents, ...backendEvents].forEach(ev=>{
+  const byKey=new Map();
+  [...(staticEvents||[]),...(backendEvents||[])].forEach(ev=>{
     if(!ev||!ev.id||!ev.title||!ev.date)return;
-    const index=merged.findIndex(item=>sameEventIdentity(item,ev));
-    if(index>=0){
-      const existing=merged[index];
-      const preferNew=String(existing.id||'').startsWith('local-')&&!String(ev.id||'').startsWith('local-');
-      merged[index]=preferNew?ev:{...existing,...ev,id:existing.id};
-    }else{
-      merged.push(ev);
+    const key=eventIdentityKey(ev);
+    if(!key)return;
+    const existing=byKey.get(key);
+    if(!existing){
+      byKey.set(key,ev);
+      return;
     }
+    const incomingIsPersistent=isPersistentEventId(ev.id);
+    const existingIsPersistent=isPersistentEventId(existing.id);
+    const keepId=incomingIsPersistent ? ev.id : existingIsPersistent ? existing.id : ev.id || existing.id;
+    byKey.set(key,{...existing,...ev,id:keepId});
   });
-  return merged.sort((a,b)=>String(eventKeyDate(a)).localeCompare(String(eventKeyDate(b)))||String(a.title||'').localeCompare(String(b.title||'')));
+  return [...byKey.values()].sort((a,b)=>String(eventKeyDate(a)).localeCompare(String(eventKeyDate(b)))||String(a.title||'').localeCompare(String(b.title||'')));
+}
+
+function getStoredCurrentAccount(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('ambiCurrentAccountV19'));
+    return isSessionValid(saved)?saved:null;
+  }catch{
+    return null;
+  }
+}
+
+function getFreshSessionToken(account){
+  const stored=getStoredCurrentAccount();
+  if(stored?.session_token && (!account?.username || stored.username===account.username || stored.member_id===account.member_id || stored.id===account.id)){
+    return stored.session_token;
+  }
+  return account?.session_token || '';
 }
 
 async function loadCalendarEventsFromSupabase(sessionToken){
@@ -1786,7 +1769,7 @@ function App(){
   const [form,setForm]=useState(blank);
   const [editing,setEditing]=useState(null);
   const [toast,setToast]=useState('');
-  const [currentAccount,setCurrentAccount]=useState(()=>{const saved=readStoredCurrentAccount();return isSessionValid(saved)?saved:null});
+  const [currentAccount,setCurrentAccount]=useState(()=>{try{const saved=JSON.parse(localStorage.getItem('ambiCurrentAccountV19'));return isSessionValid(saved)?saved:null}catch{return null}});
   const loggedIn=!!currentAccount;
   const currentRole=currentAccount?.role || 'member';
   const isManagementUser=canAccessManagement(currentRole);
@@ -1810,60 +1793,42 @@ function App(){
 
   useEffect(()=>{if(!supabaseConfigured||!supabase){if(import.meta.env.DEV){console.warn('AMBI Supabase is not configured. Check .env.local.')}return}let active=true;supabase.auth.getSession().then(({error})=>{if(!active)return;if(error&&import.meta.env.DEV){console.warn('AMBI Supabase session check failed:',error.message)}});const {data}=supabase.auth.onAuthStateChange(()=>{});return()=>{active=false;data?.subscription?.unsubscribe?.()}},[]);
 
-  function getCalendarAccountForSync(){
-    const normalizedCurrent=normalizeAccountSession(currentAccount);
-    const stored=readStoredCurrentAccount();
-    if(stored&&isSessionValid(stored)&&sameAccountIdentity(stored,normalizedCurrent||currentAccount)){
-      if(stored.session_token&&stored.session_token!==normalizedCurrent?.session_token){
-        setCurrentAccount(stored);
-      }
-      return stored;
-    }
-    return normalizedCurrent;
-  }
-
-  function handleCalendarAuthFailure(error){
-    if(!isInvalidSessionError(error))return false;
-    const stored=readStoredCurrentAccount();
-    const active=normalizeAccountSession(currentAccount);
-    if(stored&&active&&stored.session_token===active.session_token){
-      writeStoredCurrentAccount(null);
-    }
-    setToast('Calendar online save needs a fresh login. Please log out and log in again.');
-    return true;
-  }
-
-  async function refreshCalendarEvents(showFailure=false,accountOverride=null){
-    const syncAccount=normalizeAccountSession(accountOverride)||getCalendarAccountForSync();
-    if(!loggedIn||!syncAccount?.session_token)return false;
+  async function refreshCalendarEvents(showFailure=false){
+    const sessionToken=getFreshSessionToken(currentAccount);
     const cached=[...readCalendarCache(),...readPendingCalendarEvents()];
+    if(!loggedIn||!sessionToken){
+      setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,cached));
+      if(showFailure)setToast('Calendar sync skipped: login session missing. Please log out and log in again.');
+      return false;
+    }
     if(!supabaseConfigured||!supabase){
       if(showFailure)setToast('Calendar sync failed: Supabase is not connected');
       setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,cached));
       return false;
     }
     try{
-      const confirmedPending=await syncPendingCalendarEvents(syncAccount.session_token,selected);
-      const mapped=await loadCalendarEventsFromSupabase(syncAccount.session_token);
-      const merged=mergeCalendarEvents(seedCalendarEvents,[...cached,...confirmedPending,...mapped]);
+      const confirmedPending=await syncPendingCalendarEvents(sessionToken,selected);
+      const mapped=await loadCalendarEventsFromSupabase(sessionToken);
+      const localOnly=cached.filter(local=>!mapped.some(remote=>sameEventIdentity(local,remote)));
+      const merged=mergeCalendarEvents(seedCalendarEvents,[...localOnly,...confirmedPending,...mapped]);
       setCalendarEvents(merged);
       writeCalendarCache(merged);
       return true;
     }catch(error){
       setCalendarEvents(mergeCalendarEvents(seedCalendarEvents,cached));
-      if(showFailure)setToast(`Calendar sync failed: ${error?.message||error}`);handleCalendarAuthFailure(error);
-      if(import.meta.env.DEV){console.warn('AMBI events load failed. Using built-in calendar fallback.',error?.message||error);}
+      if(showFailure)setToast(`Calendar sync failed: ${error?.message||error}`);
+      if(import.meta.env.DEV){console.warn('AMBI events load failed. Using local calendar fallback.',error?.message||error);}
       return false;
     }
   }
 
-  useEffect(()=>{let active=true;async function loadMembers(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_members',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);const currentMember=mapped.find(m=>m.id===currentAccount.member_id)||accountToMember(currentAccount);setSelected(currentMember);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI member directory load failed. Using local fallback.',error?.message||error);}}}loadMembers();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  useEffect(()=>{let active=true;async function loadMembers(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_members',{p_session_token:getFreshSessionToken(currentAccount)});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppMember).filter(m=>m.name);if(mapped.length){setMembers(mapped);const currentMember=mapped.find(m=>m.id===currentAccount.member_id)||accountToMember(currentAccount);setSelected(currentMember);localStorage.setItem('ambiMembersRealV2',JSON.stringify(mapped));}}catch(error){if(import.meta.env.DEV){console.warn('AMBI member directory load failed. Using local fallback.',error?.message||error);}}}loadMembers();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
   useEffect(()=>{let active=true;async function loadEvents(){if(!active)return;await refreshCalendarEvents(false)}loadEvents();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
   useEffect(()=>{if(!loggedIn||!currentAccount?.session_token)return;const sync=()=>{refreshCalendarEvents(false)};const onVisibility=()=>{if(document.visibilityState==='visible')sync()};window.addEventListener('focus',sync);document.addEventListener('visibilitychange',onVisibility);const timer=setInterval(sync,60000);return()=>{window.removeEventListener('focus',sync);document.removeEventListener('visibilitychange',onVisibility);clearInterval(timer)}},[loggedIn,currentAccount?.session_token]);
 
-  useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:currentAccount.session_token});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
+  useEffect(()=>{let active=true;async function loadPosts(){if(!loggedIn||!currentAccount?.session_token)return;if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_posts',{p_session_token:getFreshSessionToken(currentAccount)});if(error)throw error;if(!active)return;const mapped=(data||[]).map(toAppPost).filter(p=>p.title&&!p.blocked);setMemberPosts(mapped.length?mapped:seedPosts);localStorage.setItem('ambiMemberPostsV20',JSON.stringify(mapped.length?mapped:seedPosts));}catch(error){if(import.meta.env.DEV){console.warn('AMBI posts load failed. Using local notice board fallback.',error?.message||error);}}}loadPosts();return()=>{active=false}},[loggedIn,currentAccount?.session_token]);
 
   useEffect(()=>{let active=true;async function loadAppSettings(){if(!supabaseConfigured||!supabase)return;try{const {data,error}=await supabase.rpc('ambi_get_public_app_settings');if(error)throw error;if(!active)return;const rows=Array.isArray(data)?data:[];const read=(key,fallback='')=>{const found=rows.find(row=>row.setting_key===key);return found?String(found.setting_value):fallback};const footer=rows.find(row=>row.setting_key==='web_mobile_footer_enabled');if(footer){const enabled=String(footer.setting_value)==='true';setWebFooterEnabled(enabled);localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));}const nextVersionSettings={latestApkVersion:read('latest_apk_version','21.5.0'),minimumApkVersionCode:read('minimum_apk_version_code','0'),latestApkDownloadUrl:read('latest_apk_download_url',''),apkReleaseNotes:read('apk_release_notes','')};setAppVersionSettings(nextVersionSettings);localStorage.setItem('ambiAppVersionSettingsV21',JSON.stringify(nextVersionSettings));}catch(error){if(import.meta.env.DEV){console.warn('AMBI app settings load failed. Using local setting fallback.',error?.message||error);}}}loadAppSettings();return()=>{active=false}},[]);
 
@@ -1879,7 +1844,7 @@ function App(){
     }
     setWebFooterEnabled(enabled);
     try{
-      const {error}=await supabase.rpc('ambi_admin_set_app_setting',{p_session_token:currentAccount.session_token,p_setting_key:'web_mobile_footer_enabled',p_setting_value:String(enabled)});
+      const {error}=await supabase.rpc('ambi_admin_set_app_setting',{p_session_token:getFreshSessionToken(currentAccount),p_setting_key:'web_mobile_footer_enabled',p_setting_value:String(enabled)});
       if(error)throw error;
       localStorage.setItem('ambiWebMobileFooterEnabled',String(enabled));
       setToast(enabled?'Website mobile footer is ON for all web users':'Website mobile footer is OFF for all web users');
@@ -1901,7 +1866,7 @@ function App(){
       return false;
     }
     try{
-      const {error}=await supabase.rpc('ambi_admin_set_app_setting',{p_session_token:currentAccount.session_token,p_setting_key:settingKey,p_setting_value:String(settingValue)});
+      const {error}=await supabase.rpc('ambi_admin_set_app_setting',{p_session_token:getFreshSessionToken(currentAccount),p_setting_key:settingKey,p_setting_value:String(settingValue)});
       if(error)throw error;
       const next={...appVersionSettings};
       if(settingKey==='latest_apk_version')next.latestApkVersion=String(settingValue);
@@ -1923,7 +1888,7 @@ function App(){
 
   useEffect(()=>{let handle;CapacitorApp.addListener('backButton',()=>{const current=pageRef.current;if(current&&current!=='home'){setPage('home');return}const now=Date.now();if(now-lastBackRef.current<2000){CapacitorApp.exitApp();return}lastBackRef.current=now;setToast('Press back again to exit')}).then(h=>{handle=h}).catch(()=>{});return()=>{if(handle&&handle.remove)handle.remove()}},[]);
   useEffect(()=>localStorage.setItem('ambiMembersRealV2',JSON.stringify(members)),[members]);
-  useEffect(()=>{writeStoredCurrentAccount(currentAccount)},[currentAccount]);
+  useEffect(()=>{if(currentAccount)localStorage.setItem('ambiCurrentAccountV19',JSON.stringify(currentAccount));else localStorage.removeItem('ambiCurrentAccountV19')},[currentAccount]);
   useEffect(()=>localStorage.setItem('ambiContactsV18',JSON.stringify(contacts)),[contacts]);
   useEffect(()=>localStorage.setItem('ambiMemberPostsV20',JSON.stringify(memberPosts)),[memberPosts]);
   useEffect(()=>writeCalendarCache(calendarEvents),[calendarEvents]);
@@ -1938,10 +1903,8 @@ function App(){
     if(error)throw error;
     const row=Array.isArray(data)?data[0]:data;
     if(!row?.session_token)throw new Error('Invalid username or password.');
-    const normalizedRow=normalizeAccountSession(row);
-    setCurrentAccount(normalizedRow);
-    writeStoredCurrentAccount(normalizedRow);
-    const member=accountToMember(normalizedRow);
+    setCurrentAccount(row);
+    const member=accountToMember(row);
     setSelected(member);
     setMembers(ms=>ms.some(m=>m.id===member.id)?ms:[member,...ms]);
     setToast(row.must_change_password?'Login successful. Please change your temporary password soon.':'Login successful');
@@ -1968,7 +1931,7 @@ function App(){
     if(supabaseConfigured&&supabase){
       try{
         const {data,error}=await supabase.rpc('ambi_create_post',{
-          p_session_token:currentAccount.session_token,
+          p_session_token:getFreshSessionToken(currentAccount),
           p_kind:draft.kind,
           p_title:draft.title,
           p_summary:draft.summary,
@@ -1990,7 +1953,7 @@ function App(){
     if(draft.kind==='Event Notice'&&draft.eventDate){
       const eventDraft={title:draft.title,date:draft.eventDate,time:draft.eventTime||'All day',location:draft.eventLocation||'AMBI',type:'Member Event',source:draft.details||draft.summary||'Created from Home notice board'};
       try{
-        const savedEvent=supabaseConfigured&&supabase?await createCalendarEventInSupabase(getCalendarAccountForSync()?.session_token,eventDraft):createLocalCalendarEvent(eventDraft,selected);
+        const savedEvent=supabaseConfigured&&supabase?await createCalendarEventInSupabase(currentAccount.session_token,eventDraft):createLocalCalendarEvent(eventDraft,selected);
         setCalendarEvents(list=>upsertCalendarEvent(list,savedEvent));
         writeCalendarCache(upsertCalendarEvent(calendarEvents,savedEvent));
       }catch(error){
@@ -2008,7 +1971,7 @@ function App(){
   async function blockPost(id){
     if(!canModerate(currentRole)){setToast('Admin only');return;}
     if(supabaseConfigured&&supabase&&currentAccount?.session_token&&String(id).length>20){
-      const {error}=await supabase.rpc('ambi_block_post',{p_session_token:currentAccount.session_token,p_post_id:id});
+      const {error}=await supabase.rpc('ambi_block_post',{p_session_token:getFreshSessionToken(currentAccount),p_post_id:id});
       if(error){setToast(error.message||'Could not block post');return;}
     }
     setMemberPosts(list=>list.filter(p=>p.id!==id));
@@ -2017,7 +1980,7 @@ function App(){
   async function deletePost(id){
     if(!canModerate(currentRole)){setToast('Admin only');return;}
     if(supabaseConfigured&&supabase&&currentAccount?.session_token&&String(id).length>20){
-      const {error}=await supabase.rpc('ambi_delete_post',{p_session_token:currentAccount.session_token,p_post_id:id});
+      const {error}=await supabase.rpc('ambi_delete_post',{p_session_token:getFreshSessionToken(currentAccount),p_post_id:id});
       if(error){setToast(error.message||'Could not delete post');return;}
     }
     setMemberPosts(list=>list.filter(p=>p.id!==id));
@@ -2027,7 +1990,7 @@ function App(){
 
   const locked=!loggedIn;
 
-  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount} getCalendarAccount={getCalendarAccountForSync} onCalendarAuthFailure={handleCalendarAuthFailure} refreshCalendarEvents={refreshCalendarEvents}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount} refreshEvents={refreshCalendarEvents}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
 <footer className="avit">
   <p>DESIGNED &amp; DEVELOPED BY</p>
   <h2>Av<span>i</span>T Solutions</h2>
@@ -2207,7 +2170,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   const [msg,setMsg]=useState('');
   const [loginDraft,setLoginDraft]=useState({memberId:'',username:'',password:'123456',role:'member'});
   const [roleDraft,setRoleDraft]=useState({accountId:'',role:'level1_admin'});
-  const [apkDraft,setApkDraft]=useState({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.6',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''});
+  const [apkDraft,setApkDraft]=useState({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.5',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''});
   const role=currentAccount?.role || 'member';
   const canCreate=canCreateMemberLogin(role);
   const canAssign=canAssignAdminRoles(role);
@@ -2219,13 +2182,13 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   const supers=accounts.filter(a=>a.role==='super_admin');
   const selectedRoleAccount=accounts.find(a=>a.account_id===roleDraft.accountId);
   useEffect(()=>{loadAccounts()},[currentAccount?.session_token]);
-  useEffect(()=>{setApkDraft({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.6',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''})},[appVersionSettings.latestApkVersion,appVersionSettings.minimumApkVersionCode,appVersionSettings.latestApkDownloadUrl,appVersionSettings.apkReleaseNotes]);
+  useEffect(()=>{setApkDraft({latestApkVersion:appVersionSettings.latestApkVersion||'21.6.5',minimumApkVersionCode:appVersionSettings.minimumApkVersionCode||'0',latestApkDownloadUrl:appVersionSettings.latestApkDownloadUrl||'',apkReleaseNotes:appVersionSettings.apkReleaseNotes||''})},[appVersionSettings.latestApkVersion,appVersionSettings.minimumApkVersionCode,appVersionSettings.latestApkDownloadUrl,appVersionSettings.apkReleaseNotes]);
   useEffect(()=>{if(!loginDraft.memberId&&membersWithoutAccounts[0]){setLoginDraft(d=>({...d,memberId:membersWithoutAccounts[0].id}))}},[membersWithoutAccounts.length]);
   useEffect(()=>{if(!roleDraft.accountId&&accounts[0]){setRoleDraft(d=>({...d,accountId:accounts[0].account_id}))}},[accounts.length]);
   async function loadAccounts(){
     if(!currentAccount?.session_token||!supabaseConfigured||!supabase)return;
     try{
-      const {data,error}=await supabase.rpc('ambi_admin_get_accounts',{p_session_token:currentAccount.session_token});
+      const {data,error}=await supabase.rpc('ambi_admin_get_accounts',{p_session_token:getFreshSessionToken(currentAccount)});
       if(error)throw error;
       setAccounts(data||[]);
     }catch(error){
@@ -2238,7 +2201,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
     if(!loginDraft.memberId||!loginDraft.username.trim()||!loginDraft.password){setMsg('Choose member, username and temporary password.');return;}
     setBusy(true);setMsg('');
     try{
-      const {error}=await supabase.rpc('ambi_admin_create_account',{p_session_token:currentAccount.session_token,p_member_id:loginDraft.memberId,p_username:loginDraft.username.trim(),p_temp_password:loginDraft.password,p_role:loginDraft.role});
+      const {error}=await supabase.rpc('ambi_admin_create_account',{p_session_token:getFreshSessionToken(currentAccount),p_member_id:loginDraft.memberId,p_username:loginDraft.username.trim(),p_temp_password:loginDraft.password,p_role:loginDraft.role});
       if(error)throw error;
       setMsg('Login account created with selected role. User must log in and change temporary password.');
       setLoginDraft({memberId:'',username:'',password:'123456',role:'member'});
@@ -2251,7 +2214,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
     if(!roleDraft.accountId){setMsg('Choose an account first.');return;}
     setBusy(true);setMsg('');
     try{
-      const {error}=await supabase.rpc('ambi_admin_set_role',{p_session_token:currentAccount.session_token,p_account_id:roleDraft.accountId,p_role:roleDraft.role});
+      const {error}=await supabase.rpc('ambi_admin_set_role',{p_session_token:getFreshSessionToken(currentAccount),p_account_id:roleDraft.accountId,p_role:roleDraft.role});
       if(error)throw error;
       setMsg('Role updated. Ask the user to log out and log back in.');
       await loadAccounts();
@@ -2262,7 +2225,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
     if(!pass)return;
     setBusy(true);setMsg('');
     try{
-      const {error}=await supabase.rpc('ambi_admin_reset_password',{p_session_token:currentAccount.session_token,p_account_id:account.account_id,p_temp_password:pass});
+      const {error}=await supabase.rpc('ambi_admin_reset_password',{p_session_token:getFreshSessionToken(currentAccount),p_account_id:account.account_id,p_temp_password:pass});
       if(error)throw error;
       setMsg('Temporary password reset. User must change password on next login.');
       await loadAccounts();
@@ -2272,7 +2235,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
     const next=!account.is_active;
     setBusy(true);setMsg('');
     try{
-      const {error}=await supabase.rpc('ambi_admin_set_active',{p_session_token:currentAccount.session_token,p_account_id:account.account_id,p_is_active:next});
+      const {error}=await supabase.rpc('ambi_admin_set_active',{p_session_token:getFreshSessionToken(currentAccount),p_account_id:account.account_id,p_is_active:next});
       if(error)throw error;
       setMsg(next?'Account unblocked.':'Account blocked.');
       await loadAccounts();
@@ -2283,7 +2246,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
     if(!canAssign){setMsg('Super Admin only.');return;}
     setBusy(true);
     try{
-      const ok1=await updateAppSetting('latest_apk_version',apkDraft.latestApkVersion.trim()||'21.6.6');
+      const ok1=await updateAppSetting('latest_apk_version',apkDraft.latestApkVersion.trim()||'21.6.5');
       const ok2=await updateAppSetting('minimum_apk_version_code',String(apkDraft.minimumApkVersionCode||'0').trim()||'0');
       const ok3=await updateAppSetting('latest_apk_download_url',apkDraft.latestApkDownloadUrl.trim());
       const ok4=await updateAppSetting('apk_release_notes',apkDraft.apkReleaseNotes.trim());
@@ -2339,7 +2302,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
       <form onSubmit={saveApkSettings} className="apkSettingsForm">
         <div className="two">
           <label>Latest APK version
-            <input value={apkDraft.latestApkVersion} onChange={e=>setApkDraft({...apkDraft,latestApkVersion:e.target.value})} disabled={!canAssign||busy} placeholder="21.6.6"/>
+            <input value={apkDraft.latestApkVersion} onChange={e=>setApkDraft({...apkDraft,latestApkVersion:e.target.value})} disabled={!canAssign||busy} placeholder="21.6.7"/>
           </label>
           <label>Minimum allowed version code
             <input value={apkDraft.minimumApkVersionCode} onChange={e=>setApkDraft({...apkDraft,minimumApkVersionCode:e.target.value.replace(/[^0-9]/g,'')})} disabled={!canAssign||busy} placeholder="21500"/>
@@ -2418,7 +2381,7 @@ function Management({members=[],events=[],setPage,currentAccount,webFooterEnable
   </>
 }
 
-function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount,getCalendarAccount,onCalendarAuthFailure,refreshCalendarEvents}){
+function CalendarPage({members,openProfile,events,setEvents,currentMember,currentAccount,refreshEvents}){
   const now=new Date();
   const todayMonth=now.getMonth();
   const todayYear=now.getFullYear();
@@ -2464,8 +2427,7 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       alert('Backend is not connected. RSVP was not saved.');
       return;
     }
-    const syncAccount=normalizeAccountSession(getCalendarAccount?.())||normalizeAccountSession(currentAccount);
-    if(!syncAccount?.session_token){
+    if(!currentAccount?.session_token){
       alert('Login session missing. Please log out and log in again.');
       return;
     }
@@ -2476,7 +2438,7 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
     setSaving(true);
     try{
       const {data,error}=await supabase.rpc('ambi_rsvp_event',{
-        p_session_token:syncAccount.session_token,
+        p_session_token:getFreshSessionToken(currentAccount),
         p_event_id:selectedEvent.id,
         p_status:status
       });
@@ -2484,13 +2446,17 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       const fresh=Array.isArray(data)?data[0]:data;
       if(!fresh?.id)throw new Error('Supabase did not return the updated RSVP.');
       const mapped=toAppEvent(fresh);
-      setEvents(list=>list.map(ev=>ev.id===mapped.id?mapped:ev));
+      setEvents(list=>{
+        const next=mergeCalendarEvents(seedCalendarEvents,[...list,mapped]);
+        writeCalendarCache(next);
+        return next;
+      });
       setSelectedEventId(mapped.id);
-      setSyncStatus('RSVP saved and synced.');
+      setSyncStatus('RSVP saved online. Calendar synced.');
+      await refreshEvents?.(false);
       triggerSound();
     }catch(error){
       console.error('AMBI RSVP save failed:',error);
-      onCalendarAuthFailure?.(error);
       alert(`RSVP was not saved: ${error?.message||error}`);
     }finally{
       setSaving(false);
@@ -2516,22 +2482,20 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
     }
     setSaving(true);
     setSyncStatus('Saving event to Supabase...');
-    const syncAccount=normalizeAccountSession(getCalendarAccount?.())||normalizeAccountSession(currentAccount);
     try{
-      const savedEvent=await createCalendarEventInSupabase(syncAccount?.session_token,ev);
+      const savedEvent=await createCalendarEventInSupabase(getFreshSessionToken(currentAccount),ev);
       setEvents(list=>upsertCalendarEvent(list,savedEvent));
-      await refreshCalendarEvents?.(false,syncAccount);
       const savedParts=dateParts(savedEvent.date);
       setSelectedYear(savedParts.year);
       setSelectedMonth(savedParts.month);
       setSelectedEventId(savedEvent.id);
       setShowCreate(false);
       setDraft({title:'',date:savedEvent.date,time:'4:00 PM',location:'BEG Office',type:'Member Event',createdBy:currentMember?.name||'Verified Member'});
-      setSyncStatus('Event saved online ✓ Calendar synced from Supabase.');
+      setSyncStatus('Event saved online. Calendar synced from Supabase.');
+      await refreshEvents?.(false);
     }catch(error){
       console.error('AMBI event save failed:',error);
       const reason=formatSupabaseError(error);
-      onCalendarAuthFailure?.(error);
       const localEvent=createLocalCalendarEvent(ev,currentMember);
       writePendingCalendarEvents([localEvent,...readPendingCalendarEvents()]);
       setEvents(list=>upsertCalendarEvent(list,localEvent));
@@ -2540,7 +2504,7 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
       setSelectedMonth(savedParts.month);
       setSelectedEventId(localEvent.id);
       setShowCreate(false);
-      setSyncStatus(isInvalidSessionError(error)?'Saved locally. Your login session is stale, so online sync will retry after fresh login.':'Saved locally, will sync when online. Supabase detail: '+reason);
+      setSyncStatus(`Supabase save failed: ${reason}. Event kept locally and will retry sync.`);
     }finally{
       setSaving(false);
     }
@@ -2549,7 +2513,7 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
     if(!canModerate(currentAccount?.role)){alert('Admin only');return;}
     setEvents(list=>list.map(ev=>ev.id===id?{...ev,blocked:true,blockedBy:currentAccount?.full_name||'Admin'}:ev));
     if(supabaseConfigured&&supabase&&isPersistentEventId(id)&&currentAccount?.session_token){
-      const {error}=await supabase.rpc('ambi_block_event',{p_session_token:(normalizeAccountSession(getCalendarAccount?.())||normalizeAccountSession(currentAccount))?.session_token,p_event_id:id});
+      const {error}=await supabase.rpc('ambi_block_event',{p_session_token:getFreshSessionToken(currentAccount),p_event_id:id});
       if(error&&import.meta.env.DEV)console.warn('Event blocked locally but not in Supabase:',error.message);
     }
   }
@@ -2557,7 +2521,7 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
     if(!canModerate(currentAccount?.role)){alert('Admin only');return;}
     setEvents(list=>list.filter(ev=>ev.id!==id));
     if(supabaseConfigured&&supabase&&isPersistentEventId(id)&&currentAccount?.session_token){
-      const {error}=await supabase.rpc('ambi_delete_event',{p_session_token:(normalizeAccountSession(getCalendarAccount?.())||normalizeAccountSession(currentAccount))?.session_token,p_event_id:id});
+      const {error}=await supabase.rpc('ambi_delete_event',{p_session_token:getFreshSessionToken(currentAccount),p_event_id:id});
       if(error&&import.meta.env.DEV)console.warn('Event deleted locally but not in Supabase:',error.message);
     }
   }
