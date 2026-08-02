@@ -5,20 +5,20 @@ import { supabase, supabaseConfigured } from './lib/supabase';
 import {Menu,Home,Users,CalendarDays,Plus,UserCircle,Bell,Search,Upload,Edit3,Trash2,Save,ChevronRight,Building2,CheckCircle2,Image as ImageIcon,Download,Share2,BriefcaseBusiness,ShieldCheck,X} from 'lucide-react';
 import './styles.css';
 
-const AMBI_APP_VERSION='21.6.7';
-const AMBI_APP_VERSION_CODE=21607;
+const AMBI_APP_VERSION='21.7.0';
+const AMBI_APP_VERSION_CODE=21700;
 
 function readStoredAppVersionSettings(){
   try{
     return JSON.parse(localStorage.getItem('ambiAppVersionSettingsV21')) || {
-      latestApkVersion:'21.6.7',
+      latestApkVersion:'21.7.0',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
     };
   }catch{
     return {
-      latestApkVersion:'21.6.7',
+      latestApkVersion:'21.7.0',
       minimumApkVersionCode:'0',
       latestApkDownloadUrl:'',
       apkReleaseNotes:''
@@ -1990,7 +1990,7 @@ function App(){
 
   const locked=!loggedIn;
 
-  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount} refreshEvents={refreshCalendarEvents}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
+  return <div className="app"><header className="topbar"><button className="iconBtn" onClick={()=>setDrawer(true)}><Menu/></button><button className="brand brandButton" onClick={()=>loggedIn?setPage('home'):setPage('login')} aria-label="Go to Home"><img src="/ambi-logo.png"/><div><strong>AMBI</strong><small>Business Excellence Group</small></div></button><nav><button className={page==='home'?'active':''} onClick={()=>loggedIn?setPage('home'):setPage('login')}>Home</button><button className={page==='about'?'active':''} onClick={()=>setPage('about')}>About</button><button className={page==='directory'?'active':''} onClick={()=>loggedIn?setPage('directory'):setPage('login')}>Directory</button><button className={(page==='calendar'||page==='reminder')?'active':''} onClick={()=>loggedIn?setPage('calendar'):setPage('login')}>Calendar</button></nav><button className="notif" onClick={()=>loggedIn?setPage('notifications'):setPage('login')}><Bell/><span>{loggedIn?3:0}</span></button></header>{drawer&&<div className="overlay" onClick={()=>setDrawer(false)}><aside className="drawer" onClick={e=>e.stopPropagation()}><div className="drawerHead"><img src="/ambi-logo.png"/><div><b>AMBI</b><small>{loggedIn?currentAccount?.role||'Member':'Login required'}</small></div><button onClick={()=>setDrawer(false)}><X/></button></div>{['home','about','directory','calendar','submit','notifications','profile',...(isManagementUser?['management']:[])].map(p=><button key={p} className={(page===p||(p==='calendar'&&page==='reminder'))?'active':''} onClick={()=>{if(p==='about'||loggedIn){setPage(p)}else{setPage('login')}setDrawer(false)}}>{p==='calendar'?'Calendar':p==='management'?'Admin Settings':p[0].toUpperCase()+p.slice(1)}</button>)}</aside></div>}<main>{versionBlocked?<ApkUpdateRequired appVersionSettings={appVersionSettings}/>:locked&&page!=='about'?<LoginPage onLogin={handleMemberLogin}/>:<>{page==='login'&&<LoginPage onLogin={handleMemberLogin}/>} {page==='home'&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='directory'&&<Directory members={members} sectors={sectors} cat={cat} setCat={setCat} query={query} setQuery={setQuery} openProfile={openProfile}/>} {page==='about'&&<AboutPage/>} {page==='profile'&&<Profile member={selected} edit={edit} contacts={contacts} loggedIn={loggedIn} logout={logout} login={()=>setPage('login')} activity={profileActivity} currentAccount={currentAccount} changePassword={handleChangePassword}/>} {page==='management'&&isManagementUser&&<Management members={members} events={calendarEvents} setPage={setPage} currentAccount={currentAccount} webFooterEnabled={webFooterEnabled} updateWebFooterSetting={updateWebFooterSetting} nativeApp={nativeApp} appVersionSettings={appVersionSettings} updateAppSetting={updateAppSetting}/>} {page==='management'&&!isManagementUser&&<HomePage members={members} calendarEvents={calendarEvents} posts={memberPosts} setPage={setPage} openProfile={openProfile} currentRole={currentRole} onBlockPost={blockPost} onDeletePost={deletePost}/>} {page==='submit'&&<SubmitContent onCreatePost={createMemberPost} currentMember={selected} currentRole={currentRole}/>} {(page==='calendar'||page==='reminder')&&<CalendarPage openProfile={openProfile} members={members} events={calendarEvents} setEvents={setCalendarEvents} currentMember={selected} currentAccount={currentAccount} refreshEvents={refreshCalendarEvents}/>} {page==='notifications'&&<Notifications events={calendarEvents} setPage={setPage}/>}</>}</main>
 <footer className="avit">
   <p>DESIGNED &amp; DEVELOPED BY</p>
   <h2>Av<span>i</span>T Solutions</h2>
@@ -2048,68 +2048,142 @@ function postThemeClass(kind=''){
 function HomePage({members,calendarEvents=[],posts=[],setPage,openProfile,currentRole='member',onBlockPost,onDeletePost}){
   const [activePost,setActivePost]=useState(null);
   const [showAllPosts,setShowAllPosts]=useState(false);
-  const visiblePosts=(posts||[])
+  const [heroIndex,setHeroIndex]=useState(0);
+  const [heroTouchStart,setHeroTouchStart]=useState(null);
+  const noticeRef=useRef(null);
+
+  const visiblePosts=useMemo(()=>(posts||[])
     .filter(p=>!p.blocked)
-    .sort((a,b)=>(b.pinned===true)-(a.pinned===true)||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    .sort((a,b)=>(b.pinned===true)-(a.pinned===true)||String(b.createdAt||'').localeCompare(String(a.createdAt||''))),[posts]);
+
   const demoPosts=[
     {id:'demo-business',kind:'Business Offer',title:'Strategic partnership opportunity',summary:'We are looking for strategic partners for our upcoming project in the healthcare sector.',createdBy:'Medilife Pvt. Ltd.',company:'',createdAt:'2h ago'},
     {id:'demo-ad',kind:'Advertisement',title:'Special discount on our services',summary:'Exclusive 20% discount for AMBI members this month.',createdBy:'Tech Solutions',company:'',createdAt:'5h ago'},
-    {id:'demo-notice',kind:'Notice',title:'Monthly Members Meeting',summary:'Monthly members meeting on 25th May 2026 at 4:00 PM.',createdBy:'AMBI Admin',company:'',createdAt:'1d ago'},
+    {id:'demo-notice',kind:'Notice',title:'Monthly Members Meeting',summary:'Monthly members meeting and member updates.',createdBy:'AMBI Admin',company:'',createdAt:'1d ago'},
     {id:'demo-ann',kind:'Announcement',title:'New Member Welcome',summary:'Welcome our new members who joined this month.',createdBy:'AMBI Team',company:'',createdAt:'2d ago'}
   ];
+
   const allBoardPosts=visiblePosts.length?visiblePosts:demoPosts;
   const boardPosts=showAllPosts?allBoardPosts:allBoardPosts.slice(0,8);
-  const heroPost=boardPosts[0];
-  const upcoming=(calendarEvents||[]).filter(e=>!e.blocked).slice(0,4);
+  const upcoming=useMemo(()=>[...(calendarEvents||[])]
+    .filter(e=>!e.blocked)
+    .sort((a,b)=>String(eventKeyDate(a)).localeCompare(String(eventKeyDate(b))))
+    .slice(0,6),[calendarEvents]);
+
+  const postHeroSlides=allBoardPosts.slice(0,4).map(post=>({...post,heroSource:'post'}));
+  const eventHeroSlides=upcoming.slice(0,2).map(event=>({
+    id:`hero-event-${event.id}`,
+    kind:'Event Notice',
+    title:event.title,
+    summary:`${eventKeyDate(event)} • ${event.time||'All day'} • ${event.location||'AMBI'}`,
+    details:event.source||'',
+    createdBy:event.createdBy||'AMBI Calendar',
+    createdAt:eventKeyDate(event),
+    heroSource:'event',
+    event
+  }));
+  const heroSlides=[...postHeroSlides,...eventHeroSlides].slice(0,6);
+  const heroItem=heroSlides[heroIndex]||heroSlides[0]||null;
   const isAdmin=canModerate(currentRole);
   const sectorCount=new Set(members.map(m=>m.category)).size;
-  const openPost=(post)=>setActivePost(post);
+
+  const mediaType=(asset)=>String(asset?.type||'').toLowerCase();
+  const isYoutube=(asset)=>mediaType(asset)==='text/youtube'||/youtu(?:\.be|be\.com)/i.test(String(asset?.src||''));
+  const youtubeEmbed=(url='')=>{
+    const match=String(url).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^?&/]+)/i);
+    return match?`https://www.youtube.com/embed/${match[1]}`:'';
+  };
+
+  const heroAsset=heroItem?.asset||null;
+  const heroImage=heroAsset&&mediaType(heroAsset).startsWith('image/')?heroAsset.src:'';
+  const heroVideo=heroAsset&&(mediaType(heroAsset).startsWith('video/')||/\.(mp4|webm)(\?|$)/i.test(String(heroAsset.src||'')))?heroAsset.src:'';
+  const heroYoutube=heroAsset&&isYoutube(heroAsset)?youtubeEmbed(heroAsset.src):'';
+
+  const goToHero=(index)=>setHeroIndex(()=>{
+    if(!heroSlides.length)return 0;
+    return (index+heroSlides.length)%heroSlides.length;
+  });
+
+  useEffect(()=>{
+    if(heroIndex>=heroSlides.length)setHeroIndex(0);
+  },[heroSlides.length,heroIndex]);
+
+  useEffect(()=>{
+    if(heroSlides.length<2)return undefined;
+    const timer=window.setInterval(()=>setHeroIndex(index=>(index+1)%heroSlides.length),6500);
+    return()=>window.clearInterval(timer);
+  },[heroSlides.length]);
+
+  const handleHeroTouchEnd=(clientX)=>{
+    if(heroTouchStart===null)return;
+    const diff=clientX-heroTouchStart;
+    if(Math.abs(diff)>45)goToHero(heroIndex+(diff<0?1:-1));
+    setHeroTouchStart(null);
+  };
+
+  const openHeroItem=()=>{
+    if(!heroItem){setPage('submit');return;}
+    if(heroItem.heroSource==='event'){setPage('calendar');return;}
+    setActivePost(heroItem);
+  };
+
+  const scrollToPosts=()=>{
+    setShowAllPosts(true);
+    window.requestAnimationFrame(()=>noticeRef.current?.scrollIntoView({behavior:'smooth',block:'start'}));
+  };
+
   return <>
     <style>{`
       .premiumHome{max-width:1180px;margin:0 auto 88px;padding:18px 16px 0;color:#0b1410}
-      .premiumHero{position:relative;overflow:hidden;border-radius:22px;min-height:286px;padding:32px;background:linear-gradient(110deg,rgba(3,43,27,.98) 0%,rgba(8,60,42,.96) 45%,rgba(17,36,75,.72) 100%),url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80');background-size:cover;background-position:center right;box-shadow:0 18px 45px rgba(0,0,0,.18);display:flex;flex-direction:column;justify-content:space-between}
-      .premiumHero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(198,168,77,.18),transparent 28%),linear-gradient(90deg,rgba(2,28,18,.3),transparent);pointer-events:none}
+      .premiumHero{position:relative;overflow:hidden;border-radius:22px;min-height:286px;padding:32px;background:linear-gradient(110deg,rgba(3,43,27,.98) 0%,rgba(8,60,42,.96) 45%,rgba(17,36,75,.72) 100%),url('https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80');background-size:cover;background-position:center right;box-shadow:0 18px 45px rgba(0,0,0,.18);display:flex;flex-direction:column;justify-content:space-between;touch-action:pan-y}
+      .premiumHero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(198,168,77,.18),transparent 28%),linear-gradient(90deg,rgba(2,28,18,.62),rgba(2,28,18,.14));pointer-events:none;z-index:1}
+      .premiumHeroMedia{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0;z-index:0;pointer-events:none}
       .premiumHeroContent{position:relative;z-index:2;max-width:560px}
       .premiumHeroTag{display:inline-flex;align-items:center;gap:8px;border-radius:999px;background:#244A8F;color:white;padding:9px 13px;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px}
-      .premiumHeroTag.business{background:#1E4735}.premiumHeroTag.advertisement{background:#C7771A}.premiumHeroTag.announcement{background:#5A2E8A}
+      .premiumHeroTag.business{background:#1E4735}.premiumHeroTag.advertisement{background:#C7771A}.premiumHeroTag.announcement{background:#5A2E8A}.premiumHeroTag.event{background:#244A8F}
       .premiumHero h1{font-size:clamp(36px,5vw,58px);line-height:.96;color:white;margin:0 0 18px;letter-spacing:-.04em;text-shadow:0 2px 18px rgba(0,0,0,.18)}
-      .premiumHeroMeta{font-weight:700;color:rgba(255,255,255,.86);margin-bottom:18px}
-      .premiumHeroBtn{border:0;border-radius:10px;background:white;color:#101820;padding:13px 18px;font-weight:900;display:inline-flex;align-items:center;gap:12px;box-shadow:0 12px 26px rgba(0,0,0,.2)}
-      .premiumHeroDots{position:absolute;z-index:2;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px}.premiumHeroDots span{width:9px;height:9px;border-radius:50%;border:2px solid rgba(255,255,255,.86)}.premiumHeroDots span:first-child{background:white}
+      .premiumHeroMeta{font-weight:700;color:rgba(255,255,255,.9);margin-bottom:18px}
+      .premiumHeroBtn{border:0;border-radius:10px;background:white;color:#101820;padding:13px 18px;font-weight:900;display:inline-flex;align-items:center;gap:12px;box-shadow:0 12px 26px rgba(0,0,0,.2);cursor:pointer}
+      .premiumHeroDots{position:absolute;z-index:3;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px}.premiumHeroDots button{width:10px;height:10px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.9);background:transparent;cursor:pointer}.premiumHeroDots button.active{background:white}
+      .premiumHeroArrow{position:absolute;top:50%;z-index:3;transform:translateY(-50%);width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.86);color:#143c2a;display:grid;place-items:center;font-size:26px;font-weight:900;cursor:pointer}.premiumHeroArrow.prev{left:12px}.premiumHeroArrow.next{right:12px}
       .premiumCreateRow{display:flex;justify-content:flex-end;margin:16px 0}.premiumCreateBtn{border:0;border-radius:10px;background:#0f5132;color:white;padding:13px 24px;font-weight:900;font-size:16px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 14px 28px rgba(15,81,50,.24)}
-      .premiumStats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.premiumStat{background:white;border:1px solid rgba(15,23,32,.08);border-radius:16px;min-height:112px;padding:22px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 28px rgba(0,0,0,.07)}.premiumStatIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:white;background:#1E4735}.premiumStat:nth-child(2) .premiumStatIcon{background:#C59D3D}.premiumStat:nth-child(3) .premiumStatIcon{background:#244A8F}.premiumStat:nth-child(4) .premiumStatIcon{background:#5A2E8A}.premiumStat b{display:block;font-family:'Playfair Display',Georgia,serif;font-size:40px;line-height:1;color:#0F1720}.premiumStat span{font-weight:800;color:#0F1720}.premiumStat small{display:block;margin-top:6px;color:#56616D}
-      .premiumNoticeHead{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}.premiumNoticeHead h2{font-family:Inter,system-ui,sans-serif;font-size:18px;letter-spacing:.12em;text-transform:uppercase;margin:0;color:#101820;font-weight:900;border-left:5px solid #1E4735;padding-left:14px}.premiumNoticeHead button{border:0;background:transparent;color:#0f5132;font-weight:900;display:flex;align-items:center;gap:8px}
+      .premiumStats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.premiumStat{appearance:none;width:100%;font:inherit;color:inherit;text-align:left;background:white;border:1px solid rgba(15,23,32,.08);border-radius:16px;min-height:112px;padding:22px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 28px rgba(0,0,0,.07);cursor:pointer;transition:180ms ease}.premiumStat:hover,.premiumStat:focus-visible{transform:translateY(-2px);box-shadow:0 2px 8px rgba(0,0,0,.06),0 16px 38px rgba(0,0,0,.11);outline:2px solid rgba(30,71,53,.18);outline-offset:2px}.premiumStatIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:white;background:#1E4735}.premiumStat:nth-child(2) .premiumStatIcon{background:#C59D3D}.premiumStat:nth-child(3) .premiumStatIcon{background:#244A8F}.premiumStat:nth-child(4) .premiumStatIcon{background:#5A2E8A}.premiumStat b{display:block;font-family:'Playfair Display',Georgia,serif;font-size:40px;line-height:1;color:#0F1720}.premiumStat span{font-weight:800;color:#0F1720}.premiumStat small{display:block;margin-top:6px;color:#56616D}
+      .premiumNoticeHead{scroll-margin-top:100px;display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}.premiumNoticeHead h2{font-family:Inter,system-ui,sans-serif;font-size:18px;letter-spacing:.12em;text-transform:uppercase;margin:0;color:#101820;font-weight:900;border-left:5px solid #1E4735;padding-left:14px}.premiumNoticeHead button{border:0;background:transparent;color:#0f5132;font-weight:900;display:flex;align-items:center;gap:8px}
       .premiumBoard{display:grid;gap:12px}.premiumPost{position:relative;overflow:hidden;border:1px solid rgba(15,23,32,.08);background:white;border-radius:16px;min-height:118px;display:grid;grid-template-columns:112px 1fr 180px 34px;align-items:center;text-align:left;padding:0 18px 0 0;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 28px rgba(0,0,0,.07);transition:180ms ease}.premiumPost:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.06),0 16px 40px rgba(0,0,0,.10)}
       .postIconBox{height:100%;min-height:118px;display:grid;place-items:center;color:white;background:#244A8F}.postIconBox svg{width:38px;height:38px}.post-business .postIconBox{background:#1E4735}.post-advertisement .postIconBox{background:#C7771A}.post-announcement .postIconBox{background:#5A2E8A}.post-event .postIconBox{background:#244A8F}
       .premiumPostMain{padding:18px 18px}.premiumBadge{display:inline-flex;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;background:#e9f0ff;color:#244A8F;margin-bottom:8px}.post-business .premiumBadge{background:#eaf4ee;color:#1E4735}.post-advertisement .premiumBadge{background:#fff1df;color:#C7771A}.post-announcement .premiumBadge{background:#f2eaff;color:#5A2E8A}
       .premiumPost h3{margin:0 0 6px;font-size:19px;line-height:1.12;color:#0F1720;font-weight:900}.premiumPost p{margin:0;color:#3f4a45;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.premiumAuthor{text-align:right;color:#0F1720;font-weight:800}.premiumAuthor small{display:block;margin-top:8px;color:#6b7470;font-weight:600}.premiumArrow{color:#0F1720;display:grid;place-items:center}
-      .postModalBackdrop{position:fixed;inset:0;background:rgba(7,16,12,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}.postModal{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:28px;box-shadow:0 28px 80px rgba(0,0,0,.28)}.postModalHead{display:flex;justify-content:space-between;gap:16px;align-items:start}.postModal h2{font-size:clamp(30px,5vw,50px);line-height:.98;margin:8px 0 12px}.postModal p{font-size:16px;line-height:1.6;color:#516058}.postModal img{width:100%;max-height:380px;object-fit:cover;border-radius:16px;margin:14px 0}.postModalActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.postModalActions button,.postClose{border:0;border-radius:10px;background:#285d3b;color:white;font-weight:900;padding:10px 14px}.postClose{background:#f0f4ef;color:#285d3b}
-      @media(max-width:820px){.premiumHome{padding:12px 14px 0}.premiumHero{min-height:220px;padding:22px;border-radius:18px}.premiumHero h1{font-size:35px}.premiumHeroMeta{font-size:13px}.premiumCreateRow{margin:14px 0}.premiumStats{grid-template-columns:repeat(4,1fr);gap:8px}.premiumStat{min-height:88px;padding:12px 8px;display:block;text-align:center;border-radius:14px}.premiumStatIcon{width:40px;height:40px;margin:0 auto 8px}.premiumStat b{font-size:30px}.premiumStat span{font-size:12px}.premiumStat small{display:none}.premiumPost{grid-template-columns:82px 1fr 20px;min-height:112px;padding-right:10px}.postIconBox{min-height:112px}.premiumAuthor{display:none}.premiumPostMain{padding:14px}.premiumPost h3{font-size:17px}.premiumNoticeHead h2{font-size:15px}.premiumHeroDots{bottom:16px}}
+      .postModalBackdrop{position:fixed;inset:0;background:rgba(7,16,12,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:18px}.postModal{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:28px;box-shadow:0 28px 80px rgba(0,0,0,.28)}.postModalHead{display:flex;justify-content:space-between;gap:16px;align-items:start}.postModal h2{font-size:clamp(30px,5vw,50px);line-height:.98;margin:8px 0 12px}.postModal p{font-size:16px;line-height:1.6;color:#516058}.postModal img,.postModal video,.postModal iframe{width:100%;max-height:420px;object-fit:cover;border:0;border-radius:16px;margin:14px 0}.postModal iframe{aspect-ratio:16/9;max-height:none}.postModal audio{width:100%;margin:14px 0}.postModalActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.postModalActions button,.postModalActions a,.postClose{border:0;border-radius:10px;background:#285d3b;color:white;font-weight:900;padding:10px 14px;text-decoration:none}.postClose{background:#f0f4ef;color:#285d3b}
+      @media(max-width:820px){.premiumHome{padding:12px 14px 0}.premiumHero{min-height:220px;padding:22px;border-radius:18px}.premiumHero h1{font-size:35px}.premiumHeroMeta{font-size:13px}.premiumHeroArrow{display:none}.premiumCreateRow{margin:14px 0}.premiumStats{grid-template-columns:repeat(4,1fr);gap:8px}.premiumStat{min-height:88px;padding:12px 8px;display:block;text-align:center;border-radius:14px}.premiumStatIcon{width:40px;height:40px;margin:0 auto 8px}.premiumStat b{font-size:30px}.premiumStat span{font-size:12px}.premiumStat small{display:none}.premiumPost{grid-template-columns:82px 1fr 20px;min-height:112px;padding-right:10px}.postIconBox{min-height:112px}.premiumAuthor{display:none}.premiumPostMain{padding:14px}.premiumPost h3{font-size:17px}.premiumNoticeHead h2{font-size:15px}.premiumHeroDots{bottom:16px}}
     `}</style>
 
     <main className="premiumHome">
-      <section className="premiumHero">
+      <section className="premiumHero" style={heroImage?{backgroundImage:`linear-gradient(110deg,rgba(3,43,27,.94),rgba(8,60,42,.82),rgba(17,36,75,.42)),url("${heroImage}")`}:undefined} onTouchStart={e=>setHeroTouchStart(e.touches[0].clientX)} onTouchEnd={e=>handleHeroTouchEnd(e.changedTouches[0].clientX)} aria-roledescription="carousel" aria-label="Latest AMBI updates">
+        {heroVideo&&<video className="premiumHeroMedia" src={heroVideo} autoPlay muted loop playsInline/>}
+        {heroYoutube&&<iframe className="premiumHeroMedia" src={`${heroYoutube}?autoplay=1&mute=1&controls=0`} title={heroItem?.title||'Featured video'} allow="autoplay; encrypted-media"/>}
+        <button className="premiumHeroArrow prev" type="button" onClick={()=>goToHero(heroIndex-1)} aria-label="Previous featured item">‹</button>
         <div className="premiumHeroContent">
-          <span className={`premiumHeroTag ${postThemeClass(heroPost?.kind||'Notice').replace('post-','')}`}>{heroPost?.kind || 'Notice'}</span>
-          <h1>{heroPost?.title || 'Welcome to AMBI member updates'}</h1>
-          <div className="premiumHeroMeta">Posted by {heroPost?.createdBy || 'AMBI Admin'} {heroPost?.createdAt?` • ${heroPost.createdAt}`:''}</div>
-          <button className="premiumHeroBtn" onClick={()=>heroPost?openPost(heroPost):setPage('submit')}>View Notice <ChevronRight size={18}/></button>
+          <span className={`premiumHeroTag ${postThemeClass(heroItem?.kind||'Notice').replace('post-','')}`}>{heroItem?.kind||'Notice'}</span>
+          <h1>{heroItem?.title||'Welcome to AMBI member updates'}</h1>
+          <div className="premiumHeroMeta">{heroItem?.heroSource==='event'?'Calendar event':`Posted by ${heroItem?.createdBy||'AMBI Admin'}`} {heroItem?.createdAt?` • ${heroItem.createdAt}`:''}</div>
+          <button className="premiumHeroBtn" type="button" onClick={openHeroItem}>{heroItem?.heroSource==='event'?'View Event':'View Notice'} <ChevronRight size={18}/></button>
         </div>
-        <div className="premiumHeroDots"><span></span><span></span><span></span><span></span></div>
+        <button className="premiumHeroArrow next" type="button" onClick={()=>goToHero(heroIndex+1)} aria-label="Next featured item">›</button>
+        <div className="premiumHeroDots">{heroSlides.map((slide,index)=><button key={slide.id} type="button" className={index===heroIndex?'active':''} onClick={()=>goToHero(index)} aria-label={`Open featured item ${index+1}`} aria-current={index===heroIndex?'true':undefined}/>)}</div>
       </section>
 
       <div className="premiumCreateRow">
         <button className="premiumCreateBtn" onClick={()=>setPage('submit')}><Plus size={22}/> Create Post</button>
       </div>
 
-      <section className="premiumStats">
-        <div className="premiumStat"><span className="premiumStatIcon"><Users size={24}/></span><div><b>{members.length}</b><span>Members</span><small>Active community</small></div></div>
-        <div className="premiumStat"><span className="premiumStatIcon"><Building2 size={24}/></span><div><b>{sectorCount}</b><span>Sectors</span><small>Business categories</small></div></div>
-        <div className="premiumStat"><span className="premiumStatIcon"><Save size={24}/></span><div><b>{visiblePosts.length}</b><span>Posts</span><small>New this week</small></div></div>
-        <div className="premiumStat"><span className="premiumStatIcon"><CalendarDays size={24}/></span><div><b>{calendarEvents.filter(e=>!e.blocked).length}</b><span>Events</span><small>Upcoming events</small></div></div>
+      <section className="premiumStats" aria-label="AMBI quick links">
+        <button type="button" className="premiumStat" onClick={()=>setPage('directory')}><span className="premiumStatIcon"><Users size={24}/></span><div><b>{members.length}</b><span>Members</span><small>Open directory</small></div></button>
+        <button type="button" className="premiumStat" onClick={()=>setPage('directory')}><span className="premiumStatIcon"><Building2 size={24}/></span><div><b>{sectorCount}</b><span>Sectors</span><small>Browse categories</small></div></button>
+        <button type="button" className="premiumStat" onClick={scrollToPosts}><span className="premiumStatIcon"><Save size={24}/></span><div><b>{visiblePosts.length}</b><span>Posts</span><small>Open notice board</small></div></button>
+        <button type="button" className="premiumStat" onClick={()=>setPage('calendar')}><span className="premiumStatIcon"><CalendarDays size={24}/></span><div><b>{calendarEvents.filter(e=>!e.blocked).length}</b><span>Events</span><small>Open calendar</small></div></button>
       </section>
 
-      <div className="premiumNoticeHead">
+      <div className="premiumNoticeHead" ref={noticeRef}>
         <h2>{showAllPosts?'All Notice Board Posts':'Live Notice Board'}</h2>
         <button onClick={()=>setShowAllPosts(value=>!value)}>
           {showAllPosts?'Show latest':'View all'} <ChevronRight size={18}/>
@@ -2120,7 +2194,7 @@ function HomePage({members,calendarEvents=[],posts=[],setPage,openProfile,curren
         {boardPosts.map(post=>{
           const theme=postThemeClass(post.kind);
           const Icon=theme==='post-business'?BriefcaseBusiness:theme==='post-advertisement'?Bell:theme==='post-announcement'?ShieldCheck:Bell;
-          return <button className={`premiumPost ${theme}`} key={post.id} onClick={()=>openPost(post)}>
+          return <button className={`premiumPost ${theme}`} key={post.id} onClick={()=>setActivePost(post)}>
             <div className="postIconBox"><Icon/></div>
             <div className="premiumPostMain">
               <span className="premiumBadge">{post.kind}</span>
@@ -2134,9 +2208,9 @@ function HomePage({members,calendarEvents=[],posts=[],setPage,openProfile,curren
       </section>
     </main>
 
-    {activePost&&<div className="postModalBackdrop" onClick={()=>setActivePost(null)}><article className="postModal" onClick={e=>e.stopPropagation()}><div className="postModalHead"><span className={`premiumBadge ${postThemeClass(activePost.kind)}`}>{activePost.kind}</span><button className="postClose" onClick={()=>setActivePost(null)}>Close</button></div><h2>{activePost.title}</h2><p>{activePost.summary}</p>{activePost.asset&&activePost.asset.type?.startsWith('image/')&&<img src={activePost.asset.src}/>} {activePost.asset&&!activePost.asset.type?.startsWith('image/')&&<p><b>Attachment:</b> {activePost.asset.name}</p>} {activePost.details&&<p>{activePost.details}</p>}<small className="noticeMeta">Posted by {activePost.createdBy}{activePost.company?` • ${activePost.company}`:''}</small><div className="postModalActions">{activePost.kind==='Event Notice'&&<button onClick={()=>{setActivePost(null);setPage('calendar')}}>Open Calendar</button>}{isAdmin&&<><button onClick={()=>{onBlockPost?.(activePost.id);setActivePost(null)}}>Block</button><button onClick={()=>{onDeletePost?.(activePost.id);setActivePost(null)}}>Delete</button></>}</div></article></div>}
-  </>}
-
+    {activePost&&<div className="postModalBackdrop" onClick={()=>setActivePost(null)}><article className="postModal" onClick={e=>e.stopPropagation()}><div className="postModalHead"><span className={`premiumBadge ${postThemeClass(activePost.kind)}`}>{activePost.kind}</span><button className="postClose" onClick={()=>setActivePost(null)}>Close</button></div><h2>{activePost.title}</h2><p>{activePost.summary}</p>{activePost.asset&&mediaType(activePost.asset).startsWith('image/')&&<img src={activePost.asset.src}/>} {activePost.asset&&isYoutube(activePost.asset)&&youtubeEmbed(activePost.asset.src)&&<iframe src={youtubeEmbed(activePost.asset.src)} title={activePost.title} allowFullScreen/>} {activePost.asset&&mediaType(activePost.asset).startsWith('video/')&&<video src={activePost.asset.src} controls playsInline/>} {activePost.asset&&mediaType(activePost.asset).startsWith('audio/')&&<audio src={activePost.asset.src} controls/>} {activePost.asset&&mediaType(activePost.asset)==='application/pdf'&&<p><b>PDF attached:</b> {activePost.asset.name}</p>} {activePost.details&&<p>{activePost.details}</p>}<small className="noticeMeta">Posted by {activePost.createdBy}{activePost.company?` • ${activePost.company}`:''}</small><div className="postModalActions">{activePost.asset&&mediaType(activePost.asset)==='text/url'&&<a href={activePost.asset.src} target="_blank" rel="noreferrer">Open Link</a>}{activePost.kind==='Event Notice'&&<button onClick={()=>{setActivePost(null);setPage('calendar')}}>Open Calendar</button>}{isAdmin&&<><button onClick={()=>{onBlockPost?.(activePost.id);setActivePost(null)}}>Block</button><button onClick={()=>{onDeletePost?.(activePost.id);setActivePost(null)}}>Delete</button></>}</div></article></div>}
+  </>
+}
 
 function AboutPage(){return <><section className="pageHero"><p className="eyebrow">About the Business Excellence Group</p><h1>Built from a collective voice for business progress.</h1><p>The Business Excellence Group was created in 2017 as a common platform for young emerging business establishments, entrepreneurs and professionals to share ideas, strengthen relationships and give meaningful direction toward greater goals.</p></section><section className="stats"><div><b>2017</b><span>Founded</span></div><div><b>BEG</b><span>Registered Society, Manipur</span></div><div><b>15+</b><span>Business Sectors</span></div><div><b>SYNERGY</b><span>Business Summit</span></div></section><section className="panel story"><h2>Our journey</h2><p>In a short span of time, BEG has emerged as a forward-thinking and progressive organisation in the trade and commerce ecosystem. Government departments, institutions, trade bodies and prominent establishments recognise BEG as a growing collective of first-generation business enterprises, entrepreneurs and professionals.</p><p>What started as a rendezvous to share ideas and experiences soon grew into a vibrant network. Members represent diverse sectors including manufacturing, hospitality, healthcare, education, e-commerce, retail, automobiles, real estate, construction, IT, finance, cosmetics, FMCG, food and beverage and more.</p></section><section className="panel story"><h2>Community and economic engagement</h2><p>BEG has supported humanitarian initiatives from flood relief to COVID-19 assistance, including the distribution of food and essential items to children’s homes, de-addiction centres and differently abled centres.</p><p>To strengthen economic relationships, BEG has participated in national and international conclaves. SYNERGY, a business summit with Myanmar business delegates, created an important platform for dialogue between enterprises of Manipur and neighbouring regions.</p></section></>}
 
@@ -2539,9 +2613,10 @@ function CalendarPage({members,openProfile,events,setEvents,currentMember,curren
 }
 function AttendeeGroup({title,names,members,openProfile}){return <div className="attendeeGroupV16"><div className="attendeeGroupHeadV16"><b>{title}</b><span>{names.length}</span></div>{names.length?names.map(name=>{const m=members.find(x=>x.name===name);return <button key={name} onClick={()=>m&&openProfile(m)}>{m?<Avatar m={m}/>:<div className="avatarMono mini">{name.slice(0,2).toUpperCase()}</div>}<div><strong>{name}</strong><small>{m?.company||'Verified Member'}</small></div><ChevronRight size={15}/></button>}):<small className="emptyMiniV16">No responses yet.</small>}</div>}
 
-function SubmitContent({onCreatePost,currentMember}){
+function SubmitContent({onCreatePost,currentMember,currentRole='member'}){
   const now=new Date();
   const [asset,setAsset]=useState(null);
+  const [mediaUrl,setMediaUrl]=useState('');
   const [kind,setKind]=useState('Advertisement');
   const [title,setTitle]=useState('');
   const [summary,setSummary]=useState('');
@@ -2552,7 +2627,26 @@ function SubmitContent({onCreatePost,currentMember}){
   const [msg,setMsg]=useState('');
   const [busy,setBusy]=useState(false);
   const isEvent=kind==='Event Notice';
-  function fileUp(file){if(!file)return;readFile(file,v=>setAsset({name:file.name,type:file.type,src:v}))}
+  const canAddRichMedia=canModerate(currentRole);
+
+  function fileUp(file){
+    if(!file)return;
+    if(file.size>8*1024*1024){setMsg('Media file is too large. Use a file under 8 MB or paste a hosted media URL.');return;}
+    readFile(file,v=>setAsset({name:file.name,type:file.type||'application/octet-stream',src:v}));
+  }
+
+  function assetFromUrl(value){
+    const url=String(value||'').trim();
+    if(!url)return null;
+    if(/youtu(?:\.be|be\.com)/i.test(url))return {name:'YouTube video',type:'text/youtube',src:url};
+    if(/\.(mp4|webm)(\?|$)/i.test(url))return {name:'Hosted video',type:url.toLowerCase().includes('.webm')?'video/webm':'video/mp4',src:url};
+    if(/\.(mp3|wav|m4a|ogg)(\?|$)/i.test(url))return {name:'Hosted audio',type:'audio/mpeg',src:url};
+    if(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url))return {name:'Hosted image',type:'image/*',src:url};
+    return {name:'External link',type:'text/url',src:url};
+  }
+
+  const previewAsset=asset||(canAddRichMedia?assetFromUrl(mediaUrl):null);
+
   async function submit(e){
     e.preventDefault();
     if(!title.trim()||!summary.trim()){setMsg('Please add a title and short summary before posting.');return}
@@ -2565,7 +2659,7 @@ function SubmitContent({onCreatePost,currentMember}){
         title:title.trim(),
         summary:summary.trim(),
         details:details.trim(),
-        asset,
+        asset:previewAsset,
         createdBy:currentMember?.name||'Member',
         company:currentMember?.company||'',
         eventDate:isEvent?eventDate:'',
@@ -2576,6 +2670,7 @@ function SubmitContent({onCreatePost,currentMember}){
       setSummary('');
       setDetails('');
       setAsset(null);
+      setMediaUrl('');
       setKind('Advertisement');
       setMsg(isEvent?'Posted to Home and linked to Calendar.':'Posted to Home notice board. Admin can block/delete later if required.');
     }catch(error){
@@ -2584,6 +2679,7 @@ function SubmitContent({onCreatePost,currentMember}){
       setBusy(false);
     }
   }
+
   return <>
     <section className="pageHero"><p className="eyebrow">Member post</p><h1>Post a notice, advertisement or announcement.</h1><p>Event Notice posts can also create a linked Calendar item with date, time and location.</p></section>
     <section className="builder submitClean">
@@ -2592,12 +2688,13 @@ function SubmitContent({onCreatePost,currentMember}){
         <label>Title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Example: Special member offer / meeting notice"/></label>
         <label>Short summary<textarea value={summary} onChange={e=>setSummary(e.target.value)} placeholder="This short summary appears on the Home notice board."/></label>
         {isEvent&&<fieldset className="eventNoticeFieldsV2164"><legend>Calendar link</legend><div className="two"><label>Event date<input type="date" value={eventDate} onChange={e=>setEventDate(e.target.value)}/></label><label>Event time<select value={eventTime} onChange={e=>setEventTime(e.target.value)}>{timeOptions.map(option=><option key={option} value={option}>{option}</option>)}</select></label></div><label>Event location<input value={eventLocation} onChange={e=>setEventLocation(e.target.value)} placeholder="BEG Office / Imphal / Online"/></label></fieldset>}
-        <label className="submitUpload"><Upload/> Upload image or PDF<input type="file" accept="image/*,.pdf" onChange={e=>fileUp(e.target.files[0])}/>{asset&&<span>{asset.name}</span>}</label>
+        <label className="submitUpload"><Upload/> Upload {canAddRichMedia?'image, PDF, video or audio':'image or PDF'}<input type="file" accept={canAddRichMedia?'image/*,.pdf,video/mp4,video/webm,audio/*':'image/*,.pdf'} onChange={e=>fileUp(e.target.files[0])}/>{asset&&<span>{asset.name}</span>}</label>
+        {canAddRichMedia&&<label>Hosted media or external URL<input type="url" value={mediaUrl} onChange={e=>{setMediaUrl(e.target.value);if(e.target.value)setAsset(null)}} placeholder="YouTube, MP4, audio, image or website URL"/><small>Level 1, Level 2 and Super Admin accounts can add hosted rich media. A hosted URL is recommended for large videos.</small></label>}
         <label>Full details<textarea value={details} onChange={e=>setDetails(e.target.value)} placeholder="Add date, location, contact number, offer details or supporting information."/></label>
         <button type="submit" disabled={busy}><Save/> {busy?'Posting...':isEvent?'Post + Add to Calendar':'Post to Home'}</button>
         {msg&&<div className="successMsg">{msg}</div>}
       </form>
-      <aside className="preview"><h2>Home card preview</h2><div className="contentPreviewCard"><span>{kind}</span><h3>{title||'Post title'}</h3><p>{summary||'Short summary will appear here.'}</p>{isEvent&&<small>{eventDate} · {eventTime} · {eventLocation}</small>}{asset&&asset.type.startsWith('image/')?<img src={asset.src}/>:asset&&<b>PDF attached: {asset.name}</b>}<small>Posted by {currentMember?.name||'Verified Member'}{currentMember?.company?` • ${currentMember.company}`:''}</small></div></aside>
+      <aside className="preview"><h2>Home card preview</h2><div className="contentPreviewCard"><span>{kind}</span><h3>{title||'Post title'}</h3><p>{summary||'Short summary will appear here.'}</p>{isEvent&&<small>{eventDate} · {eventTime} · {eventLocation}</small>}{previewAsset&&String(previewAsset.type).startsWith('image/')?<img src={previewAsset.src}/>:previewAsset&&<b>{previewAsset.name}: {previewAsset.type==='text/url'?previewAsset.src:'Ready to publish'}</b>}<small>Posted by {currentMember?.name||'Verified Member'}{currentMember?.company?` • ${currentMember.company}`:''}</small></div></aside>
     </section>
   </>
 }
